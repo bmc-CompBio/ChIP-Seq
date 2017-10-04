@@ -4,14 +4,12 @@ output:
   html_notebook: default
 ---
 
-
 <style>
 .main-container { width: 1200px; max-width:2800px;}
 </style>
 
 
-## Data preparation
-
+## Genome Preparation
 ```{r, engine = 'bash', eval = FALSE}
 #!/bin/sh
 # genome_prep.sh 
@@ -33,6 +31,13 @@ cut -f1,2 Drosophila_melanogaster.BDGP6.dna.selected.fa.fai > Drosophila_melanog
 
 # build bowtie2 index
 bowtie2-build Drosophila_melanogaster.BDGP6.dna.selected.fa Drosophila_melanogaster.BDGP6.dna.selected
+```
+
+
+## Data Download
+```{r, engine = 'bash', eval = FALSE}
+#!/bin/sh
+# data_download.sh 
 
 # Download ChIP-seq data from Sequence Read Archive
 wget ftp://ftp-trace.ncbi.nlm.nih.gov/sra/sra-instant/reads/ByExp/sra/SRX/SRX252/SRX2520631/SRR5206750/SRR5206750.sra
@@ -42,8 +47,7 @@ wget ftp://ftp-trace.ncbi.nlm.nih.gov/sra/sra-instant/reads/ByExp/sra/SRX/SRX252
 ```
 
 
-## Workflow
-
+## Workflow Run
 ```{r, engine = 'bash', eval = FALSE}
 #!/bin/sh
 # workflow.sh
@@ -76,11 +80,10 @@ done
 ```
 
 
-
 ## Comments
-
 ```{r, engine = 'bash', eval = FALSE}
 # make sure files are executable
 chmod +x genome_prep.sh 
+chmod +x data_download.sh 
 chmod +x workflow.sh 
 ```
