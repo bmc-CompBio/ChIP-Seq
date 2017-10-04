@@ -1,16 +1,86 @@
 ---
 title: "ChIP-Seq Workflow"
-output: html_notebook
+output:
+  html_notebook: default
 ---
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
 
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+<style>
+.main-container { width: 1200px; max-width:2800px;}
+</style>
 
-```{r}
-plot(cars)
+
+## Data preparation
+
+```{r, engine = 'bash', eval = FALSE}
+#!/bin/sh
+# genome_prep.sh 
+
+# Download genome
+wget ftp://ftp.ensembl.org/pub/release-90/fasta/drosophila_melanogaster/dna/Drosophila_melanogaster.BDGP6.dna.toplevel.fa.gz
+
+# Extract fasta file
+gunzip Drosophila_melanogaster.BDGP6.dna.toplevel.fa.gz
+
+# Select chromosomes
+samtools faidx Drosophila_melanogaster.BDGP6.dna.toplevel.fa X 2L 2R 3L 3R > Drosophila_melanogaster.BDGP6.dna.selected.fa
+
+# Index new fasta file
+samtools faidx Drosophila_melanogaster.BDGP6.dna.selected.fa
+
+# generate chromInfo table with chromosome length
+cut -f1,2 Drosophila_melanogaster.BDGP6.dna.selected.fa.fai > Drosophila_melanogaster.BDGP6.dna.selected.chromInfo.txt
+
+# build bowtie2 index
+bowtie2-build Drosophila_melanogaster.BDGP6.dna.selected.fa Drosophila_melanogaster.BDGP6.dna.selected
+
+# Download ChIP-seq data from Sequence Read Archive
+wget ftp://ftp-trace.ncbi.nlm.nih.gov/sra/sra-instant/reads/ByExp/sra/SRX/SRX252/SRX2520631/SRR5206750/SRR5206750.sra
+wget ftp://ftp-trace.ncbi.nlm.nih.gov/sra/sra-instant/reads/ByExp/sra/SRX/SRX252/SRX2520632/SRR5206751/SRR5206751.sra
+wget ftp://ftp-trace.ncbi.nlm.nih.gov/sra/sra-instant/reads/ByExp/sra/SRX/SRX252/SRX2520634/SRR5206753/SRR5206753.sra
+wget ftp://ftp-trace.ncbi.nlm.nih.gov/sra/sra-instant/reads/ByExp/sra/SRX/SRX252/SRX2520635/SRR5206754/SRR5206754.sra
 ```
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file).
+## Workflow
+
+```{r, engine = 'bash', eval = FALSE}
+#!/bin/sh
+# workflow.sh
+
+# Iterate through files
+for FILENAME in *.sra
+do
+  # extract file basename
+	FILEBASE=`echo ${FILENAME} | sed -e "s/.sra//g"`
+  
+  # convert sra to fastq
+	fastq-dump ${FILEBASE}.sra
+  
+  # run quality control
+	fastqc ${FILEBASE}.fastq
+
+  # run bowtie2 alignment
+	bowtie2  -x Drosophila_melanogaster.BDGP6.dna.selected -U ${FILEBASE}.fastq -p 4 -S ${FILEBASE}.sam 2> ${FILEBASE}.stats 
+  
+  # convert sam to bam, sort by coordinate and index
+	samtools view -bS -q 0 ${FILEBASE}.sam | samtools sort - | tee ${FILEBASE}.bam | samtools index - ${FILEBASE}.bam.bai
+  
+  # convert bam to bedgraph
+	genomeCoverageBed -ibam ${FILEBASE}.bam  -bg -g Drosophila_melanogaster.BDGP6.dna.selected.chromInfo.txt > ${FILEBASE}.bedgraph
+  
+  # convert bedgraph to tdf
+	igvtools toTDF -z 5 ${FILEBASE}.bedgraph ${FILEBASE}.tdf Drosophila_melanogaster.BDGP6.dna.selected.fa
+
+done
+```
+
+
+
+## Comments
+
+```{r, engine = 'bash', eval = FALSE}
+# make sure files are executable
+chmod +x genome_prep.sh 
+chmod +x workflow.sh 
+```

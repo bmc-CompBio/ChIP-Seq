@@ -172,20 +172,94 @@ $(document).ready(function () {
 
 
 <!-- rnb-text-begin -->
-<p>This is an <a href="http://rmarkdown.rstudio.com">R Markdown</a> Notebook. When you execute code within the notebook, the results appear beneath the code.</p>
-<p>Try executing this chunk by clicking the <em>Run</em> button within the chunk or by placing your cursor inside it and pressing <em>Cmd+Shift+Enter</em>.</p>
+<style>
+.main-container { width: 1200px; max-width:2800px;}
+</style>
+<div id="data-preparation" class="section level2">
+<h2>Data preparation</h2>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucGxvdChjYXJzKVxuYGBgIn0= -->
-<pre class="r"><code>plot(cars)</code></pre>
+<!-- rnb-source-begin eyJkYXRhIjpbIiMhL2Jpbi9zaCIsIiMgZ2Vub21lX3ByZXAuc2ggIiwiIiwiIyBEb3dubG9hZCBnZW5vbWUiLCJ3Z2V0IGZ0cDovL2Z0cC5lbnNlbWJsLm9yZy9wdWIvcmVsZWFzZS05MC9mYXN0YS9kcm9zb3BoaWxhX21lbGFub2dhc3Rlci9kbmEvRHJvc29waGlsYV9tZWxhbm9nYXN0ZXIuQkRHUDYuZG5hLnRvcGxldmVsLmZhLmd6IiwiIiwiIyBFeHRyYWN0IGZhc3RhIGZpbGUiLCJndW56aXAgRHJvc29waGlsYV9tZWxhbm9nYXN0ZXIuQkRHUDYuZG5hLnRvcGxldmVsLmZhLmd6IiwiIiwiIyBTZWxlY3QgY2hyb21vc29tZXMiLCJzYW10b29scyBmYWlkeCBEcm9zb3BoaWxhX21lbGFub2dhc3Rlci5CREdQNi5kbmEudG9wbGV2ZWwuZmEgWCAyTCAyUiAzTCAzUiA+IERyb3NvcGhpbGFfbWVsYW5vZ2FzdGVyLkJER1A2LmRuYS5zZWxlY3RlZC5mYSIsIiIsIiMgSW5kZXggbmV3IGZhc3RhIGZpbGUiLCJzYW10b29scyBmYWlkeCBEcm9zb3BoaWxhX21lbGFub2dhc3Rlci5CREdQNi5kbmEuc2VsZWN0ZWQuZmEiLCIiLCIjIGdlbmVyYXRlIGNocm9tSW5mbyB0YWJsZSB3aXRoIGNocm9tb3NvbWUgbGVuZ3RoIiwiY3V0IC1mMSwyIERyb3NvcGhpbGFfbWVsYW5vZ2FzdGVyLkJER1A2LmRuYS5zZWxlY3RlZC5mYS5mYWkgPiBEcm9zb3BoaWxhX21lbGFub2dhc3Rlci5CREdQNi5kbmEuc2VsZWN0ZWQuY2hyb21JbmZvLnR4dCIsIiIsIiMgYnVpbGQgYm93dGllMiBpbmRleCIsImJvd3RpZTItYnVpbGQgRHJvc29waGlsYV9tZWxhbm9nYXN0ZXIuQkRHUDYuZG5hLnNlbGVjdGVkLmZhIERyb3NvcGhpbGFfbWVsYW5vZ2FzdGVyLkJER1A2LmRuYS5zZWxlY3RlZCIsIiIsIiMgRG93bmxvYWQgQ2hJUC1zZXEgZGF0YSBmcm9tIFNlcXVlbmNlIFJlYWQgQXJjaGl2ZSIsIndnZXQgZnRwOi8vZnRwLXRyYWNlLm5jYmkubmxtLm5paC5nb3Yvc3JhL3NyYS1pbnN0YW50L3JlYWRzL0J5RXhwL3NyYS9TUlgvU1JYMjUyL1NSWDI1MjA2MzEvU1JSNTIwNjc1MC9TUlI1MjA2NzUwLnNyYSIsIndnZXQgZnRwOi8vZnRwLXRyYWNlLm5jYmkubmxtLm5paC5nb3Yvc3JhL3NyYS1pbnN0YW50L3JlYWRzL0J5RXhwL3NyYS9TUlgvU1JYMjUyL1NSWDI1MjA2MzIvU1JSNTIwNjc1MS9TUlI1MjA2NzUxLnNyYSIsIndnZXQgZnRwOi8vZnRwLXRyYWNlLm5jYmkubmxtLm5paC5nb3Yvc3JhL3NyYS1pbnN0YW50L3JlYWRzL0J5RXhwL3NyYS9TUlgvU1JYMjUyL1NSWDI1MjA2MzQvU1JSNTIwNjc1My9TUlI1MjA2NzUzLnNyYSIsIndnZXQgZnRwOi8vZnRwLXRyYWNlLm5jYmkubmxtLm5paC5nb3Yvc3JhL3NyYS1pbnN0YW50L3JlYWRzL0J5RXhwL3NyYS9TUlgvU1JYMjUyL1NSWDI1MjA2MzUvU1JSNTIwNjc1NC9TUlI1MjA2NzU0LnNyYSJdfQ== -->
+<pre class="r"><code>#!/bin/sh
+# genome_prep.sh 
+
+# Download genome
+wget ftp://ftp.ensembl.org/pub/release-90/fasta/drosophila_melanogaster/dna/Drosophila_melanogaster.BDGP6.dna.toplevel.fa.gz
+
+# Extract fasta file
+gunzip Drosophila_melanogaster.BDGP6.dna.toplevel.fa.gz
+
+# Select chromosomes
+samtools faidx Drosophila_melanogaster.BDGP6.dna.toplevel.fa X 2L 2R 3L 3R &gt; Drosophila_melanogaster.BDGP6.dna.selected.fa
+
+# Index new fasta file
+samtools faidx Drosophila_melanogaster.BDGP6.dna.selected.fa
+
+# generate chromInfo table with chromosome length
+cut -f1,2 Drosophila_melanogaster.BDGP6.dna.selected.fa.fai &gt; Drosophila_melanogaster.BDGP6.dna.selected.chromInfo.txt
+
+# build bowtie2 index
+bowtie2-build Drosophila_melanogaster.BDGP6.dna.selected.fa Drosophila_melanogaster.BDGP6.dna.selected
+
+# Download ChIP-seq data from Sequence Read Archive
+wget ftp://ftp-trace.ncbi.nlm.nih.gov/sra/sra-instant/reads/ByExp/sra/SRX/SRX252/SRX2520631/SRR5206750/SRR5206750.sra
+wget ftp://ftp-trace.ncbi.nlm.nih.gov/sra/sra-instant/reads/ByExp/sra/SRX/SRX252/SRX2520632/SRR5206751/SRR5206751.sra
+wget ftp://ftp-trace.ncbi.nlm.nih.gov/sra/sra-instant/reads/ByExp/sra/SRX/SRX252/SRX2520634/SRR5206753/SRR5206753.sra
+wget ftp://ftp-trace.ncbi.nlm.nih.gov/sra/sra-instant/reads/ByExp/sra/SRX/SRX252/SRX2520635/SRR5206754/SRR5206754.sra</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
-<p>Add a new chunk by clicking the <em>Insert Chunk</em> button on the toolbar or by pressing <em>Cmd+Option+I</em>.</p>
-<p>When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the <em>Preview</em> button or press <em>Cmd+Shift+K</em> to preview the HTML file).</p>
+</div>
+<div id="workflow" class="section level2">
+<h2>Workflow</h2>
 <!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjpbIiMhL2Jpbi9zaCIsIiMgd29ya2Zsb3cuc2giLCIiLCIjIEl0ZXJhdGUgdGhyb3VnaCBmaWxlcyIsImZvciBGSUxFTkFNRSBpbiAqLnNyYSIsImRvIiwiICAjIGV4dHJhY3QgZmlsZSBiYXNlbmFtZSIsIlx0RklMRUJBU0U9YGVjaG8gJHtGSUxFTkFNRX0gfCBzZWQgLWUgXCJzLy5zcmEvL2dcImAiLCIgICIsIiAgIyBjb252ZXJ0IHNyYSB0byBmYXN0cSIsIlx0ZmFzdHEtZHVtcCAke0ZJTEVCQVNFfS5zcmEiLCIgICIsIiAgIyBydW4gcXVhbGl0eSBjb250cm9sIiwiXHRmYXN0cWMgJHtGSUxFQkFTRX0uZmFzdHEiLCIiLCIgICMgcnVuIGJvd3RpZTIgYWxpZ25tZW50IiwiXHRib3d0aWUyICAteCBEcm9zb3BoaWxhX21lbGFub2dhc3Rlci5CREdQNi5kbmEuc2VsZWN0ZWQgLVUgJHtGSUxFQkFTRX0uZmFzdHEgLXAgNCAtUyAke0ZJTEVCQVNFfS5zYW0gMj4gJHtGSUxFQkFTRX0uc3RhdHMgIiwiICAiLCIgICMgY29udmVydCBzYW0gdG8gYmFtLCBzb3J0IGJ5IGNvb3JkaW5hdGUgYW5kIGluZGV4IiwiXHRzYW10b29scyB2aWV3IC1iUyAtcSAwICR7RklMRUJBU0V9LnNhbSB8IHNhbXRvb2xzIHNvcnQgLSB8IHRlZSAke0ZJTEVCQVNFfS5iYW0gfCBzYW10b29scyBpbmRleCAtICR7RklMRUJBU0V9LmJhbS5iYWkiLCIgICIsIiAgIyBjb252ZXJ0IGJhbSB0byBiZWRncmFwaCIsIlx0Z2Vub21lQ292ZXJhZ2VCZWQgLWliYW0gJHtGSUxFQkFTRX0uYmFtICAtYmcgLWcgRHJvc29waGlsYV9tZWxhbm9nYXN0ZXIuQkRHUDYuZG5hLnNlbGVjdGVkLmNocm9tSW5mby50eHQgPiAke0ZJTEVCQVNFfS5iZWRncmFwaCIsIiAgIiwiICAjIGNvbnZlcnQgYmVkZ3JhcGggdG8gdGRmIiwiXHRpZ3Z0b29scyB0b1RERiAteiA1ICR7RklMRUJBU0V9LmJlZGdyYXBoICR7RklMRUJBU0V9LnRkZiBEcm9zb3BoaWxhX21lbGFub2dhc3Rlci5CREdQNi5kbmEuc2VsZWN0ZWQuZmEiLCIiLCJkb25lIl19 -->
+<pre class="r"><code>#!/bin/sh
+# workflow.sh
 
-<div id="rmd-source-code">LS0tCnRpdGxlOiAiQ2hJUC1TZXEgV29ya2Zsb3ciCm91dHB1dDogaHRtbF9ub3RlYm9vawotLS0KClRoaXMgaXMgYW4gW1IgTWFya2Rvd25dKGh0dHA6Ly9ybWFya2Rvd24ucnN0dWRpby5jb20pIE5vdGVib29rLiBXaGVuIHlvdSBleGVjdXRlIGNvZGUgd2l0aGluIHRoZSBub3RlYm9vaywgdGhlIHJlc3VsdHMgYXBwZWFyIGJlbmVhdGggdGhlIGNvZGUuIAoKVHJ5IGV4ZWN1dGluZyB0aGlzIGNodW5rIGJ5IGNsaWNraW5nIHRoZSAqUnVuKiBidXR0b24gd2l0aGluIHRoZSBjaHVuayBvciBieSBwbGFjaW5nIHlvdXIgY3Vyc29yIGluc2lkZSBpdCBhbmQgcHJlc3NpbmcgKkNtZCtTaGlmdCtFbnRlciouIAoKYGBge3J9CnBsb3QoY2FycykKYGBgCgpBZGQgYSBuZXcgY2h1bmsgYnkgY2xpY2tpbmcgdGhlICpJbnNlcnQgQ2h1bmsqIGJ1dHRvbiBvbiB0aGUgdG9vbGJhciBvciBieSBwcmVzc2luZyAqQ21kK09wdGlvbitJKi4KCldoZW4geW91IHNhdmUgdGhlIG5vdGVib29rLCBhbiBIVE1MIGZpbGUgY29udGFpbmluZyB0aGUgY29kZSBhbmQgb3V0cHV0IHdpbGwgYmUgc2F2ZWQgYWxvbmdzaWRlIGl0IChjbGljayB0aGUgKlByZXZpZXcqIGJ1dHRvbiBvciBwcmVzcyAqQ21kK1NoaWZ0K0sqIHRvIHByZXZpZXcgdGhlIEhUTUwgZmlsZSkuCg==</div>
+# Iterate through files
+for FILENAME in *.sra
+do
+  # extract file basename
+    FILEBASE=`echo ${FILENAME} | sed -e &quot;s/.sra//g&quot;`
+  
+  # convert sra to fastq
+    fastq-dump ${FILEBASE}.sra
+  
+  # run quality control
+    fastqc ${FILEBASE}.fastq
+
+  # run bowtie2 alignment
+    bowtie2  -x Drosophila_melanogaster.BDGP6.dna.selected -U ${FILEBASE}.fastq -p 4 -S ${FILEBASE}.sam 2&gt; ${FILEBASE}.stats 
+  
+  # convert sam to bam, sort by coordinate and index
+    samtools view -bS -q 0 ${FILEBASE}.sam | samtools sort - | tee ${FILEBASE}.bam | samtools index - ${FILEBASE}.bam.bai
+  
+  # convert bam to bedgraph
+    genomeCoverageBed -ibam ${FILEBASE}.bam  -bg -g Drosophila_melanogaster.BDGP6.dna.selected.chromInfo.txt &gt; ${FILEBASE}.bedgraph
+  
+  # convert bedgraph to tdf
+    igvtools toTDF -z 5 ${FILEBASE}.bedgraph ${FILEBASE}.tdf Drosophila_melanogaster.BDGP6.dna.selected.fa
+
+done</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+</div>
+<div id="comments" class="section level2">
+<h2>Comments</h2>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjpbIiMgbWFrZSBzdXJlIGZpbGVzIGFyZSBleGVjdXRhYmxlIiwiY2htb2QgK3ggZ2Vub21lX3ByZXAuc2ggIiwiY2htb2QgK3ggd29ya2Zsb3cuc2ggIl19 -->
+<pre class="r"><code># make sure files are executable
+chmod +x genome_prep.sh 
+chmod +x workflow.sh </code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+</div>
+
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiQ2hJUC1TZXEgV29ya2Zsb3ciCm91dHB1dDoKICBodG1sX25vdGVib29rOiBkZWZhdWx0Ci0tLQoKCjxzdHlsZT4KLm1haW4tY29udGFpbmVyIHsgd2lkdGg6IDEyMDBweDsgbWF4LXdpZHRoOjI4MDBweDt9Cjwvc3R5bGU+CgoKIyMgRGF0YSBwcmVwYXJhdGlvbgoKYGBge3IsIGVuZ2luZSA9ICdiYXNoJywgZXZhbCA9IEZBTFNFfQojIS9iaW4vc2gKIyBnZW5vbWVfcHJlcC5zaCAKCiMgRG93bmxvYWQgZ2Vub21lCndnZXQgZnRwOi8vZnRwLmVuc2VtYmwub3JnL3B1Yi9yZWxlYXNlLTkwL2Zhc3RhL2Ryb3NvcGhpbGFfbWVsYW5vZ2FzdGVyL2RuYS9Ecm9zb3BoaWxhX21lbGFub2dhc3Rlci5CREdQNi5kbmEudG9wbGV2ZWwuZmEuZ3oKCiMgRXh0cmFjdCBmYXN0YSBmaWxlCmd1bnppcCBEcm9zb3BoaWxhX21lbGFub2dhc3Rlci5CREdQNi5kbmEudG9wbGV2ZWwuZmEuZ3oKCiMgU2VsZWN0IGNocm9tb3NvbWVzCnNhbXRvb2xzIGZhaWR4IERyb3NvcGhpbGFfbWVsYW5vZ2FzdGVyLkJER1A2LmRuYS50b3BsZXZlbC5mYSBYIDJMIDJSIDNMIDNSID4gRHJvc29waGlsYV9tZWxhbm9nYXN0ZXIuQkRHUDYuZG5hLnNlbGVjdGVkLmZhCgojIEluZGV4IG5ldyBmYXN0YSBmaWxlCnNhbXRvb2xzIGZhaWR4IERyb3NvcGhpbGFfbWVsYW5vZ2FzdGVyLkJER1A2LmRuYS5zZWxlY3RlZC5mYQoKIyBnZW5lcmF0ZSBjaHJvbUluZm8gdGFibGUgd2l0aCBjaHJvbW9zb21lIGxlbmd0aApjdXQgLWYxLDIgRHJvc29waGlsYV9tZWxhbm9nYXN0ZXIuQkRHUDYuZG5hLnNlbGVjdGVkLmZhLmZhaSA+IERyb3NvcGhpbGFfbWVsYW5vZ2FzdGVyLkJER1A2LmRuYS5zZWxlY3RlZC5jaHJvbUluZm8udHh0CgojIGJ1aWxkIGJvd3RpZTIgaW5kZXgKYm93dGllMi1idWlsZCBEcm9zb3BoaWxhX21lbGFub2dhc3Rlci5CREdQNi5kbmEuc2VsZWN0ZWQuZmEgRHJvc29waGlsYV9tZWxhbm9nYXN0ZXIuQkRHUDYuZG5hLnNlbGVjdGVkCgojIERvd25sb2FkIENoSVAtc2VxIGRhdGEgZnJvbSBTZXF1ZW5jZSBSZWFkIEFyY2hpdmUKd2dldCBmdHA6Ly9mdHAtdHJhY2UubmNiaS5ubG0ubmloLmdvdi9zcmEvc3JhLWluc3RhbnQvcmVhZHMvQnlFeHAvc3JhL1NSWC9TUlgyNTIvU1JYMjUyMDYzMS9TUlI1MjA2NzUwL1NSUjUyMDY3NTAuc3JhCndnZXQgZnRwOi8vZnRwLXRyYWNlLm5jYmkubmxtLm5paC5nb3Yvc3JhL3NyYS1pbnN0YW50L3JlYWRzL0J5RXhwL3NyYS9TUlgvU1JYMjUyL1NSWDI1MjA2MzIvU1JSNTIwNjc1MS9TUlI1MjA2NzUxLnNyYQp3Z2V0IGZ0cDovL2Z0cC10cmFjZS5uY2JpLm5sbS5uaWguZ292L3NyYS9zcmEtaW5zdGFudC9yZWFkcy9CeUV4cC9zcmEvU1JYL1NSWDI1Mi9TUlgyNTIwNjM0L1NSUjUyMDY3NTMvU1JSNTIwNjc1My5zcmEKd2dldCBmdHA6Ly9mdHAtdHJhY2UubmNiaS5ubG0ubmloLmdvdi9zcmEvc3JhLWluc3RhbnQvcmVhZHMvQnlFeHAvc3JhL1NSWC9TUlgyNTIvU1JYMjUyMDYzNS9TUlI1MjA2NzU0L1NSUjUyMDY3NTQuc3JhCmBgYAoKCiMjIFdvcmtmbG93CgpgYGB7ciwgZW5naW5lID0gJ2Jhc2gnLCBldmFsID0gRkFMU0V9CiMhL2Jpbi9zaAojIHdvcmtmbG93LnNoCgojIEl0ZXJhdGUgdGhyb3VnaCBmaWxlcwpmb3IgRklMRU5BTUUgaW4gKi5zcmEKZG8KICAjIGV4dHJhY3QgZmlsZSBiYXNlbmFtZQoJRklMRUJBU0U9YGVjaG8gJHtGSUxFTkFNRX0gfCBzZWQgLWUgInMvLnNyYS8vZyJgCiAgCiAgIyBjb252ZXJ0IHNyYSB0byBmYXN0cQoJZmFzdHEtZHVtcCAke0ZJTEVCQVNFfS5zcmEKICAKICAjIHJ1biBxdWFsaXR5IGNvbnRyb2wKCWZhc3RxYyAke0ZJTEVCQVNFfS5mYXN0cQoKICAjIHJ1biBib3d0aWUyIGFsaWdubWVudAoJYm93dGllMiAgLXggRHJvc29waGlsYV9tZWxhbm9nYXN0ZXIuQkRHUDYuZG5hLnNlbGVjdGVkIC1VICR7RklMRUJBU0V9LmZhc3RxIC1wIDQgLVMgJHtGSUxFQkFTRX0uc2FtIDI+ICR7RklMRUJBU0V9LnN0YXRzIAogIAogICMgY29udmVydCBzYW0gdG8gYmFtLCBzb3J0IGJ5IGNvb3JkaW5hdGUgYW5kIGluZGV4CglzYW10b29scyB2aWV3IC1iUyAtcSAwICR7RklMRUJBU0V9LnNhbSB8IHNhbXRvb2xzIHNvcnQgLSB8IHRlZSAke0ZJTEVCQVNFfS5iYW0gfCBzYW10b29scyBpbmRleCAtICR7RklMRUJBU0V9LmJhbS5iYWkKICAKICAjIGNvbnZlcnQgYmFtIHRvIGJlZGdyYXBoCglnZW5vbWVDb3ZlcmFnZUJlZCAtaWJhbSAke0ZJTEVCQVNFfS5iYW0gIC1iZyAtZyBEcm9zb3BoaWxhX21lbGFub2dhc3Rlci5CREdQNi5kbmEuc2VsZWN0ZWQuY2hyb21JbmZvLnR4dCA+ICR7RklMRUJBU0V9LmJlZGdyYXBoCiAgCiAgIyBjb252ZXJ0IGJlZGdyYXBoIHRvIHRkZgoJaWd2dG9vbHMgdG9UREYgLXogNSAke0ZJTEVCQVNFfS5iZWRncmFwaCAke0ZJTEVCQVNFfS50ZGYgRHJvc29waGlsYV9tZWxhbm9nYXN0ZXIuQkRHUDYuZG5hLnNlbGVjdGVkLmZhCgpkb25lCmBgYAoKCgojIyBDb21tZW50cwoKYGBge3IsIGVuZ2luZSA9ICdiYXNoJywgZXZhbCA9IEZBTFNFfQojIG1ha2Ugc3VyZSBmaWxlcyBhcmUgZXhlY3V0YWJsZQpjaG1vZCAreCBnZW5vbWVfcHJlcC5zaCAKY2htb2QgK3ggd29ya2Zsb3cuc2ggCmBgYAo=</div>
 
 
 
