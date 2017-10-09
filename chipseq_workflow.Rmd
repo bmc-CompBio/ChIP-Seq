@@ -128,6 +128,21 @@ done
 ```
 
 
+## Links
+
+Mapping Quality:
+
+http://biofinysics.blogspot.de/2014/05/how-does-bowtie2-assign-mapq-scores.html
+
+http://biofinysics.blogspot.de/2014/05/the-slow-death-of-term-uniquely.html
+
+Homer:
+
+http://homer.ucsd.edu/homer/ngs/ucsc.html
+
+http://homer.ucsd.edu/homer/ngs/peaks.html
+
+
 ## Comments
 ```{r, engine = 'bash', eval = FALSE}
 # make sure files are executable
