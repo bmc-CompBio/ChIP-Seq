@@ -1,0 +1,272 @@
+---
+title: "Comparison of short read aligners for ChIP-Seq"
+output:
+  html_notebook: default
+  html_document: default
+---
+
+## Reference Data
+
+MSL2 ChIP-Seq in D. melanogaster from https://doi.org/10.1101/gr.146407.112. We expect binding only to the X chromosome therefore we can use this as a prior knowledge system for evaluation various analysis procedures.
+Single read sequencing of IP and input on Illumina Genome Analyzer II, about 60 Mio reads each.
+
+Data download on master node of the HPC using the aspera client via prefetch
+
+```{bash, eval=F}
+module load ngs/sratoolkit/2.8.0
+
+prefetch SRR495368 #IP
+prefetch SRR495378 #input
+
+fastq-dump SRR495368
+fastq-dump SRR495378
+```
+
+
+Alignment was performed on HPC providing 18 cores, running on 16 cores and 50 MB of memory and the Drosophila UCSC dm6 indexes provided on the HPC (/Users/tobiasst/Desktop/mount/work/data/genomes/fly/Drosophila_melanogaster/UCSC).
+
+* aligners used were
+    + bowtie1 version 1.1.2
+    + bowtie2 version 2.2.9
+    + bwa version 0.7.16
+    + STAR version 2.5.3a
+
+## Alignment Code 
+
+1. **bowtie** with default settings
+
+```{bash, eval=F}
+bowtie ${INDEX} -S -p ${NO_CORES}  ${FILEID}.fastq | samtools view -bS -o ${FILEID}.bam
+samtools sort -m 2G -@ ${NO_CORES} -o ${FILEID}.s.bam ${FILEID}.bam
+```
+
+2. **bowtie** reporting only uniquely mapped reads
+
+```{bash, eval=F}
+bowtie ${INDEX} -S -m 1 -p ${NO_CORES} ${FILEID}.fastq | samtools view -bS -o ${FILEID}.bam
+samtools sort -m 2G -@ ${NO_CORES} -o ${FILEID}.s.bam ${FILEID}.bam
+```
+
+3. **bowtie2** with default settings
+
+```{bash, eval=F}
+bowtie2 -p ${NO_CORES} -x ${INDEX} -U ${FILEID}.fastq | samtools view -bS -o ${FILEID}.bam
+samtools sort -m 2G -@ ${NO_CORES} -o ${FILEID}.s.bam ${FILEID}.bam
+```
+
+4. **bowtie2** reporting only uniquely mapped reads
+
+```{bash, eval=F}
+bowtie2 -p ${NO_CORES} -x ${INDEX} -U ${FILEID}.fastq > ${FILEID}.sam
+samtools view -h ${FILEID}.sam | grep -v "XS:i:" | samtools view -b -o ${FILEID}.bam
+samtools sort -m 2G -@ ${NO_CORES} -o ${FILEID}.s.bam ${FILEID}.bam
+```
+
+5. **bowtie2** reporting only uniquely mapped reads (version q0)
+
+```{bash, eval=F}
+bowtie2 -p ${NO_CORES} -x ${INDEX} -U ${FILEID}.fastq | samtools view -bS -q 0 -o ${FILEID}.bam
+samtools sort -m 2G -@ ${no_cores} -o ${FILEID}.s.bam ${FILEID}.bam
+```
+
+6. **bwa mem** with default settings
+
+```{bash, eval=F}
+bwa mem -t ${NO_CORES} ${INDEX} ${FILEID}.fastq | samtools view -bS -o ${FILEID}.bam
+samtools sort -m 2G -@ ${NO_CORES} -o ${FILEID}.s.bam ${FILEID}.bam
+```
+
+7. **bwa mem** reporting only uniquely mapped reads
+
+```{bash, eval=F}
+bwa mem -t -c 1 ${NO_CORES} ${INDEX} ${FILEID}.fastq | samtools view -bS -o ${FILEID}.bam
+samtools sort -m 2G -@ ${NO_CORES} -o ${FILEID}.s.bam ${FILEID}.bam
+```
+
+8. **bwa aln** with default settings
+
+```{bash, eval=F}
+bwa aln -t ${NO_CORES} ${INDEX} ${FILEID}.fastq > ${FILEID}.sai
+bwa samse ${INDEX} ${FILEID}.sai ${FILEID}.fastq | samtools view -bS -o ${FILEID}.bam
+samtools sort -m 2G -@ ${NO_CORES} -o ${FILEID}.s.bam ${FILEID}.bam
+```
+
+9. **STAR** with some customization
+
+```{bash, eval=F}
+STAR --runThreadN ${NO_CORES}  \
+		--genomeDir ${INDEX} \
+			--readFilesIn ${FILEID}.fastq \
+					--alignIntronMax 1 \
+						--alignEndsType EndToEnd \
+							--outSAMtype BAM SortedByCoordinate
+```
+
+10. **STAR** reporting only uniquely mapped reads
+
+```{bash, eval=F}
+STAR --runThreadN ${NO_CORES}  \
+		--genomeDir ${INDEX} \
+			--readFilesIn ${FILEID}.fastq \
+					--alignIntronMax 1 \
+						--alignEndsType EndToEnd \
+							--outSAMtype BAM SortedByCoordinate
+				        --outFilterMultimapNmax 1 \
+```
+
+
+## Execution Time
+
+Calculated from start of alignment until end of BAM file sorting. Owing the direct sorting capability of STAR. 
+
+```{r}
+readRDS("methods.rds")
+```
+
+## Coverages from BAM
+
+Form each BAM file coverage object were generated after extending the reads in 3' direction up to 200 bases. This was performed on the cluster.
+
+```{r, eval=FALSE}
+library(ShortRead)
+library(rtracklayer)
+library(GenomicRanges)
+options(scipen=100)
+gr <- readGAlignments(bam.file)
+grs <- as(gr, "GRanges")
+grsr <- resize(grs, 200)
+covs <- coverage(grsr)
+saveRDS(covs, file=sub(".bam", "_covs.rds",f))
+gd <- as(covs, "RangedData")
+export.bedGraph(gd, sub(".bam",".wig",f))
+
+```
+
+All coverages are read into one list of coverages.
+
+```{r}
+suppressPackageStartupMessages({
+  library(gdata)
+  library(RColorBrewer)
+  library(GenomicFeatures)
+  library(tsTools)
+})
+
+covs <- list.files(".","*_covs.rds")
+
+sample <- sapply(covs, function(x){strsplit(x, "\\.")[[1]][1]})
+alignType <- sub("_covs","",sapply(covs, function(x){strsplit(x, "\\.")[[1]][2]}))
+
+adf <- data.frame(file=covs)
+adf$sampleType <- ifelse(sample=="SRR495368", "IP", "input")
+adf$alignType <- alignType
+
+o <- order(adf$alignType, adf$sampleType)
+adf <- adf[o,]
+adf
+
+covList <- list()
+for (cov in adf$file) {
+  covList[[cov]] <- readRDS(cov) 
+}
+
+names(covList) <- paste(adf$alignType, adf$sampleType)
+```
+
+# Signals in a Representative Region of ChrX
+
+```{r,fig.width=9, fig.height=14, warning=F, error=F}
+
+txdb <- makeTxDbFromGFF("/Users/tobiasst/Desktop/mount/work/data/genomes/fly/Drosophila_melanogaster/UCSC/dm6/Annotation/Archives/archive-2015-07-24-09-25-49/Genes/genes.gtf")
+
+cols <- rep(brewer.pal(8, "Set1")[c(2,1)],10)
+lim <- c(0,4000)
+lims <- rep(list(lim),20)
+
+chr <- "chrX"
+start <- 20125337
+end <- 20553829
+
+plotProfiles(start,end,chr,profs=covList,txdb=txdb,collapse=T, plot.labels=F, cols=cols, grid=T, ylims=lims,ylab="coverage")
+
+```
+
+# Signal in Peaks Regions
+
+```{r, fig.width=7, fig.height=8,fig.align='center'}
+peaks <- read.delim("msl2_in_vivo_peaks.bed", header=F) 
+colnames(peaks) <- c("chr","start","end")
+
+peakSignals <- lapply(covList, function(x) {
+  sum(unlist(lapply(names(x), function(y) {
+    my.cov <- x[[y]]
+    my.peaks <- peaks[peaks$chr==sub("chr","",y),]
+    my.views <- Views(my.cov, start=my.peaks$start, end=my.peaks$end)
+    sum(sum(my.views))
+  })))
+})
+
+totalSignals <- lapply(covList, function(x) {
+  sum(unlist(lapply(names(x), function(y) {
+    my.cov <- x[[y]]
+    sum(as.numeric(my.cov))
+  })))
+})
+
+fracUnderPeak <- unlist(peakSignals)/unlist(totalSignals)
+fracUnderPeak <- fracUnderPeak[order(fracUnderPeak)]
+
+par(oma=c(6,0,0,0))
+barplot(fracUnderPeak, las=2, ylab="fraction of signal in peak area")
+
+```
+
+# Number of Peaks
+
+Peaks were called on aligned IP and input reads of each method. 
+
+```{bash, eval=F}
+#! /bin/bash
+#
+# homer.sbatch
+#
+#SBATCH -J homer                     # A single job name for the array
+#SBATCH -p slim18                    # Partition
+#SBATCH -n 9                         # 18 cores
+#SBATCH -N 1                         # nodes required
+#SBATCH -t 0-01:00                   # running time
+#SBATCH --mem 10000                  # Memory request
+#SBATCH -o homer_%A_%a.out       # Standard output
+#SBATCH -e homer_%A_%a.err       # Standard error
+
+module load ngs/Homer/4.9
+module load ngs/samtools/1.3.1
+
+makeTagDirectory ${method}_tag/ip/ SRR495368_out/SRR495368.${method}.bam -single
+makeTagDirectory ${method}_tag/input/ SRR495378_out/SRR495378.${method}.bam -single
+
+findPeaks ${method}_tag/ip/ -i ${method}_tag/input/ \
+	-style factor -fragLength 200 -inputFragLength 200 \
+	-F 2 -C 0 > ${method}_peaks.txt
+pos2bed.pl ${method}_peaks.txt > ${method}_peaks.bed
+
+rm -rf ${method}_tag
+
+```
+
+Distribution of X and autosomal peaks calculated in R
+
+```{r, fig.width=5, fig.height=5,fig.align='center'}
+mat <- Reduce(cbind,lapply(levels(as.factor(adf$alignType)), function(x) {
+  read.delim(paste0("/Users/tobiasst/Desktop/mount/work/project/tobias/aligner_test/",x,"_peaks.bed"), comment.char = "#", header=F) -> peaks
+  c(X=sum(peaks[,1]=="chrX"), A=sum(peaks[,1]!="chrX"))
+}))
+colnames(mat) <- levels(as.factor(adf$alignType))
+o <- order(mat["X",])
+
+cols <- brewer.pal(3, "Set2")[2:3]
+par(oma=c(3,0,0,0))
+barplot(mat[,o], las=2, col=cols, ylab="number of peaks")
+legend("bottomright", c("X","A"), fill=cols)
+```
+
