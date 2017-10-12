@@ -1,16 +1,16 @@
 ---
 title: "Comparison of short read aligners for ChIP-Seq"
 output:
-  html_notebook: default
   html_document: default
+  html_notebook: default
 ---
 
 ## Reference Data
 
-MSL2 ChIP-Seq in D. melanogaster from https://doi.org/10.1101/gr.146407.112. We expect binding only to the X chromosome therefore we can use this as a prior knowledge system for evaluation various analysis procedures.
-Single read sequencing of IP and input on Illumina Genome Analyzer II, about 60 Mio reads each.
+MSL2 ChIP-Seq in D. melanogaster from https://doi.org/10.1101/gr.146407.112. We expect binding only to the X chromosome therefore we can use this as a prior knowledge system for evaluation of various analysis procedures.
 
-Data download on master node of the HPC using the aspera client via prefetch
+Single read sequencing of IP and input on Illumina Genome Analyzer II, about 60 Mio reads each.
+Data downloaded on master node of the HPC using the aspera client via prefetch
 
 ```{bash, eval=F}
 module load ngs/sratoolkit/2.8.0
@@ -65,7 +65,7 @@ samtools sort -m 2G -@ ${NO_CORES} -o ${FILEID}.s.bam ${FILEID}.bam
 5. **bowtie2** reporting only uniquely mapped reads (version q0)
 
 ```{bash, eval=F}
-bowtie2 -p ${NO_CORES} -x ${INDEX} -U ${FILEID}.fastq | samtools view -bS -q 0 -o ${FILEID}.bam
+bowtie2 -p ${NO_CORES} -x ${INDEX} -U ${FILEID}.fastq | samtools view -bS -q 2 -o ${FILEID}.bam
 samtools sort -m 2G -@ ${no_cores} -o ${FILEID}.s.bam ${FILEID}.bam
 ```
 
