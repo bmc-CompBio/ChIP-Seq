@@ -173,6 +173,8 @@ my_peak_counts
 
 
 ```r
+my_design <- "onefactor"
+
 mcols(my_peak_counts) <- mcols(my_peak_counts)[!(grepl("INP", colnames(mcols(my_peak_counts) )))]
 
 
@@ -306,7 +308,7 @@ out.ranges$gene_id <- my_genes[my_nearest]$gene_id
 
 out.ranges$gene_name <- mapIds(org.Dm.eg.db, out.ranges$gene_id, "SYMBOL", keytype="ENSEMBL", multiVals="first")
 
-saveRDS(out.ranges, paste(my_ChIP,"results.rds", sep="."))
+saveRDS(out.ranges, paste(my_ChIP, my_design,"results.rds", sep="."))
 
 out.ranges
 ```
@@ -355,5 +357,222 @@ out.ranges
 ##   -------
 ##   seqinfo: 7 sequences from an unspecified genome; no seqlengths
 ```
+
+
+
+
+
+## Two-factor design
+
+
+
+## Trended Bias
+
+
+```r
+my_design <- "twofactor"
+
+my_peak_counts <- readRDS(paste(my_ChIP,"counts.rds", sep="."))
+
+
+par(mfcol=c(2,2), oma=c(0,4,0,0),mar=c(4,4,1,1), mgp = c(2.5,1,0),
+    cex=1, cex.axis=1, cex.lab=1.25, cex.main=1.5)
+
+win.ab <- aveLogCPM(DGEList(as.matrix(mcols(my_peak_counts))))
+adjc <- log2(as.matrix(mcols(my_peak_counts))+0.5)
+logfc <- adjc[,2] - adjc[,6]
+smoothScatter(win.ab, logfc, ylim=c(-3, 3), xlim=c(2, 12),
+              xlab="Average abundance", ylab="Log-fold change")
+
+logfc <- adjc[,1] - adjc[,5]
+smoothScatter(win.ab, logfc, ylim=c(-3, 3), xlim=c(2, 12),
+              xlab="Average abundance", ylab="Log-fold change")
+
+
+offsets <- normOffsets(as.matrix(mcols(my_peak_counts)), type="loess")
+norm.adjc <- adjc - offsets/log(2)
+norm.fc <- norm.adjc[,2]-norm.adjc[,6]
+smoothScatter(win.ab, norm.fc, ylim=c(-3, 3), xlim=c(2, 12),
+              xlab="Average abundance", ylab="Log-fold change")
+
+norm.fc <- norm.adjc[,1]-norm.adjc[,5]
+smoothScatter(win.ab, norm.fc, ylim=c(-3, 3), xlim=c(2, 12),
+              xlab="Average abundance", ylab="Log-fold change")
+
+mtext(text = c("Input","ChIP"), side = 2, outer = TRUE, at =c(0.3,0.8), line = 1, cex = 2, font=2)
+```
+
+<img src="K36_homer_files/figure-html/unnamed-chunk-9-1.png" style="display: block; margin: auto;" />
+
+
+
+## Estimate Variability
+
+
+```r
+stage <- factor(gsub("[A-B]_.*","", my_samples))
+my_assays <- factor(gsub(".*[A-B]_","", my_samples))
+
+design <- model.matrix(~my_assays+stage+my_assays:stage)
+design
+```
+
+```
+##   (Intercept) my_assaysK36 stageE11 my_assaysK36:stageE11
+## 1           1            0        0                     0
+## 2           1            1        0                     0
+## 3           1            0        0                     0
+## 4           1            1        0                     0
+## 5           1            0        1                     0
+## 6           1            1        1                     1
+## 7           1            0        1                     0
+## 8           1            1        1                     1
+## attr(,"assign")
+## [1] 0 1 2 3
+## attr(,"contrasts")
+## attr(,"contrasts")$my_assays
+## [1] "contr.treatment"
+## 
+## attr(,"contrasts")$stage
+## [1] "contr.treatment"
+```
+
+```r
+y <- DGEList(as.matrix(mcols(my_peak_counts)))
+y <- scaleOffset(y, offsets)
+y <- estimateDisp(y, design)
+summary(y$trended.dispersion)
+```
+
+```
+##      Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
+## 0.0004633 0.0006610 0.0009494 0.0013013 0.0017281 0.0030543
+```
+
+```r
+fit <- glmQLFit(y, design, robust=TRUE)
+
+par(mfrow=c(1,2), oma=c(3,0,0,0),mar=c(5,4,4,1), mgp = c(2.5,1,0),
+    cex=1, cex.axis=1, cex.lab=1.25, cex.main=1.5)
+
+plotBCV(y)
+
+plotQLDisp(fit)
+```
+
+<img src="K36_homer_files/figure-html/unnamed-chunk-10-1.png" style="display: block; margin: auto;" />
+
+```r
+summary(fit$df.prior)
+```
+
+```
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##  0.4912 46.9035 46.9035 45.7503 46.9035 46.9035
+```
+
+
+
+## Differential Test
+
+
+```r
+# test for interaction term
+res <- glmQLFTest(fit, coef = 4)
+
+toptags <- topTags(res, n = nrow(res$table), sort.by = "none" )
+
+toptags[1:5,]
+```
+
+```
+## Coefficient:  my_assaysK36:stageE11 
+##         logFC   logCPM          F       PValue          FDR
+## 1 -0.54798147 4.474867  7.5394379 8.322043e-03 1.881465e-02
+## 2 -0.25483930 9.019540 22.3562296 1.831166e-05 8.708818e-05
+## 3  0.03339234 8.160732  0.2136381 6.460593e-01 7.280032e-01
+## 4 -1.20584759 4.431586 37.6241296 1.273190e-07 9.915497e-07
+## 5  0.09333561 8.911290  2.7102837 1.058644e-01 1.659592e-01
+```
+
+
+## Region Annotation
+
+
+```r
+out.ranges <- granges(my_peak_counts, use.mcols=FALSE)
+
+mcols(out.ranges) <- cbind(mcols(out.ranges), toptags$table)
+
+out.ranges$direction <- ifelse(out.ranges$logFC > 0, "up", "down")
+
+library(org.Dm.eg.db)
+library(TxDb.Dmelanogaster.UCSC.dm6.ensGene)
+
+my_genes <- genes(TxDb.Dmelanogaster.UCSC.dm6.ensGene)
+my_genes <- my_genes[seqnames(my_genes) %in% unique(seqnames(out.ranges))]
+
+out.ranges <- out.ranges[seqnames(out.ranges) %in% unique(seqnames(my_genes))]
+
+mid.ranges <- makeGRangesFromDataFrame(data.frame(chr=seqnames(out.ranges),
+                                                   start=mid(ranges(out.ranges)),
+                                                   end=mid(ranges(out.ranges))))
+
+my_nearest <- nearest(mid.ranges,my_genes)
+out.ranges$gene_id <- my_genes[my_nearest]$gene_id
+
+out.ranges$gene_name <- mapIds(org.Dm.eg.db, out.ranges$gene_id, "SYMBOL", keytype="ENSEMBL", multiVals="first")
+
+saveRDS(out.ranges, paste(my_ChIP, my_design,"results.rds", sep="."))
+
+out.ranges
+```
+
+```
+## GRanges object with 6059 ranges and 8 metadata columns:
+##          seqnames               ranges strand |       logFC    logCPM
+##             <Rle>            <IRanges>  <Rle> |   <numeric> <numeric>
+##      [1]    chr2L      [ 7606,   8106]      * | -0.54798147  4.474867
+##      [2]    chr2L      [ 8503,  16061]      * | -0.25483930  9.019540
+##      [3]    chr2L      [67842,  72637]      * |  0.03339234  8.160732
+##      [4]    chr2L      [83112,  83612]      * | -1.20584759  4.431586
+##      [5]    chr2L      [94968, 102319]      * |  0.09333561  8.911290
+##      ...      ...                  ...    ... .         ...       ...
+##   [6055]     chrX [23087925, 23090444]      * |   0.1551293  6.384876
+##   [6056]     chrX [23097487, 23102483]      * |  -0.1275945  7.929383
+##   [6057]     chrX [23105988, 23108518]      * |  -0.2859364  7.021906
+##   [6058]     chrY [ 3258929,  3259429]      * |  -1.1071213  4.729225
+##   [6059]     chrY [ 3606553,  3606803]      * |   0.0190022  3.775740
+##                     F       PValue          FDR   direction     gene_id
+##             <numeric>    <numeric>    <numeric> <character> <character>
+##      [1]    7.5394379 8.322043e-03 1.881465e-02        down FBgn0031208
+##      [2]   22.3562296 1.831166e-05 8.708818e-05        down FBgn0002121
+##      [3]    0.2136381 6.460593e-01 7.280032e-01          up FBgn0067779
+##      [4]   37.6241296 1.273190e-07 9.915497e-07        down FBgn0002931
+##      [5]    2.7102837 1.058644e-01 1.659592e-01          up FBgn0031216
+##      ...          ...          ...          ...         ...         ...
+##   [6055]  2.200654053 1.441179e-01 2.151824e-01          up FBgn0039945
+##   [6056]  3.161198381 8.138120e-02 1.332672e-01        down FBgn0003559
+##   [6057]  8.905666757 4.358919e-03 1.068826e-02        down FBgn0039946
+##   [6058] 39.687098420 6.985464e-08 5.750669e-07        down FBgn0085644
+##   [6059]  0.006450578 9.363013e-01 9.548981e-01          up FBgn0046323
+##            gene_name
+##          <character>
+##      [1]     CG11023
+##      [2]      l(2)gl
+##      [3]         dbr
+##      [4]         net
+##      [5]         Zir
+##      ...         ...
+##   [6055]     CG17159
+##   [6056]       su(f)
+##   [6057]        ATbp
+##   [6058]        <NA>
+##   [6059]         ORY
+##   -------
+##   seqinfo: 7 sequences from an unspecified genome; no seqlengths
+```
+
+
 
 

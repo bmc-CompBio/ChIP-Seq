@@ -4,6 +4,7 @@
 
 
 
+## Read Data
 
 
 ```r
@@ -13,8 +14,11 @@ library(csaw)
 library(edgeR)
 
 
-homer.ranges <- readRDS("../homer/K36.results.rds")
-csaw.ranges <- readRDS("../csaw/K36.results.rds")
+homer.one.ranges <- readRDS("../homer/K36.onefactor.results.rds")
+homer.two.ranges <- readRDS("../homer/K36.twofactor.results.rds")
+
+csaw.one.ranges <- readRDS("../csaw/K36.onefactor.results.rds")
+csaw.two.ranges <- readRDS("../csaw/K36.twofactor.results.rds")
 
 
 library(org.Dm.eg.db)
@@ -25,8 +29,8 @@ my_genes$gene_name <- mapIds(org.Dm.eg.db, my_genes$gene_id, "SYMBOL", keytype="
 my_protein_coding <- summarizeProteinCodingGenes(TxDb.Dmelanogaster.UCSC.dm6.ensGene)
 my_genes <- my_genes[my_protein_coding$nb_non_coding == 0]
 
-my_genes <- my_genes[seqnames(my_genes) %in% unique(seqnames(homer.ranges))]
-my_genes <- my_genes[seqnames(my_genes) %in% unique(seqnames(csaw.ranges))]
+my_genes <- my_genes[seqnames(my_genes) %in% unique(seqnames(homer.one.ranges))]
+my_genes <- my_genes[seqnames(my_genes) %in% unique(seqnames(csaw.one.ranges))]
 
 
 
@@ -35,11 +39,11 @@ par(mfrow=c(1,1), oma=c(0,0,0,0),mar=c(5,4,4,1), mgp = c(2.5,1,0),
 
 
 
-plot(density(log10(width(csaw.ranges))), 
+plot(density(log10(width(csaw.one.ranges))), 
      xlim=c(2,5), type="l", lwd=3, 
      xlab="log10 Width [bp]", main="Peak Width Distribution")
 
-lines(density(log10(width(homer.ranges))), lwd=3, lty=2)
+lines(density(log10(width(homer.one.ranges))), lwd=3, lty=2)
 lines(density(log10(width(my_genes))), lwd=3, lty=3)
 
 legend("topright", c("csaw","homer","genes"), lty=1:3, lwd=3)
@@ -48,17 +52,31 @@ legend("topright", c("csaw","homer","genes"), lty=1:3, lwd=3)
 <img src="K36_method_comparison_files/figure-html/unnamed-chunk-2-1.png" style="display: block; margin: auto;" />
 
 
+## Volcano Plots
+
+
 ```r
-par(mfrow=c(1,2), oma=c(3,0,0,0),mar=c(5,4,4,1), mgp = c(2.5,1,0),
-    cex=1, cex.axis=1, cex.lab=1.25, cex.main=1.75)
+par(mfcol=c(2,2),  oma=c(2,4,2,4),mar=c(2,4,1,1), mgp = c(2.5,1,0), 
+    cex=1, cex.axis=1.25, cex.lab=1.25, cex.main=1.75) 
 
 
 csaw.cut_lfc <- 0.8
 csaw.cut_pv <- 5
 
-plot(csaw.ranges$best.logFC, -log10(csaw.ranges$FDR),
-    xlab="log2 FC", ylab="-log10 FDR", main = "csaw",
-    col=rgb(0,0,0,0.1), pch=19, xlim=c(-3,3), ylim=c(0,40), lwd=2)
+plot(csaw.one.ranges$best.logFC, -log10(csaw.one.ranges$FDR),
+     xlab="log2 FC", ylab="-log10 FDR", main = "",
+     col=rgb(0,0,0,0.1), pch=19, xlim=c(-3,3), ylim=c(0,40), lwd=2)
+
+abline(h=csaw.cut_pv, col="red3", lty=2, lwd=2)
+abline(v=c(-csaw.cut_lfc,csaw.cut_lfc), col="red3", lty=2, lwd=2)
+
+
+csaw.cut_lfc <- 0.8
+csaw.cut_pv <- 5
+
+plot(csaw.two.ranges$best.logFC, -log10(csaw.two.ranges$FDR),
+     xlab="log2 FC", ylab="-log10 FDR", main = "",
+     col=rgb(0,0,0,0.1), pch=19, xlim=c(-3,3), ylim=c(0,40), lwd=2)
 
 abline(h=csaw.cut_pv, col="red3", lty=2, lwd=2)
 abline(v=c(-csaw.cut_lfc,csaw.cut_lfc), col="red3", lty=2, lwd=2)
@@ -67,83 +85,141 @@ abline(v=c(-csaw.cut_lfc,csaw.cut_lfc), col="red3", lty=2, lwd=2)
 homer.cut_lfc <- 0.7  
 homer.cut_pv <- 5
 
-plot(homer.ranges$logFC, -log10(homer.ranges$FDR),
-    xlab="log2 FC", ylab="-log10 FDR", main = "homer",
-    col=rgb(0,0,0,0.1), pch=19, xlim=c(-3,3), ylim=c(0,40))
+plot(homer.one.ranges$logFC, -log10(homer.one.ranges$FDR),
+     xlab="log2 FC", ylab="-log10 FDR", main = "",
+     col=rgb(0,0,0,0.1), pch=19, xlim=c(-3,3), ylim=c(0,40))
 
 abline(h=homer.cut_pv, col="red3", lty=2, lwd=2)
 abline(v=c(-homer.cut_lfc,homer.cut_lfc), col="red3", lty=2, lwd=2)
+
+
+homer.cut_lfc <- 0.7  
+homer.cut_pv <- 5
+
+plot(homer.two.ranges$logFC, -log10(homer.two.ranges$FDR),
+     xlab="log2 FC", ylab="-log10 FDR", main = "",
+     col=rgb(0,0,0,0.1), pch=19, xlim=c(-3,3), ylim=c(0,40))
+
+abline(h=homer.cut_pv, col="red3", lty=2, lwd=2)
+abline(v=c(-homer.cut_lfc,homer.cut_lfc), col="red3", lty=2, lwd=2)
+
+
+mtext(text = c("Two-factor","One-factor"), side = 2, outer = TRUE, at =c(0.25,0.75), line = 1, cex = 2, font=2)
+mtext(text = c("csaw","homer"), side = 3, outer = TRUE, at = c(0.3,0.8), cex = 2, font=2)
 ```
 
 <img src="K36_method_comparison_files/figure-html/unnamed-chunk-3-1.png" style="display: block; margin: auto;" />
 
+## Design Comparison
 
-## Overlaps at Genes
 
 
 ```r
-library(UpSetR)
+par(mfcol=c(2,2),  oma=c(2,4,2,4),mar=c(2,4,1,1), mgp = c(2.5,1,0), 
+    cex=1, cex.axis=1.25, cex.lab=1.25, cex.main=1.25) 
 
 
-# All genes
-expressionInput <- c(homer = length(unique(homer.ranges$gene_id)), 
-                     csaw =  length(unique(csaw.ranges$gene_id)), 
-                     `homer&csaw` =  length(intersect(unique(homer.ranges$gene_id),unique(csaw.ranges$gene_id)))
-                    )
+plot(csaw.one.ranges$ave.logFC, csaw.two.ranges$ave.logFC,
+     xlab="", ylab="", main = "log2 FC",
+     col=rgb(0,0,0,0.1), pch=19, xlim=c(-3,3), ylim=c(-3,3))
+abline(coef = c(0,1), col="red3", lty=2, lwd=2)
 
-upset(fromExpression(expressionInput), text.scale=2)
+plot(-log10(csaw.one.ranges$FDR), -log10(csaw.two.ranges$FDR),
+     xlab="", ylab="", main = "FDR",
+     col=rgb(0,0,0,0.1), pch=19, xlim=c(0,40), ylim=c(0,40))
+abline(coef = c(0,1), col="red3", lty=2, lwd=2)
+
+
+plot(homer.one.ranges$logFC, homer.two.ranges$logFC,
+     xlab="", ylab="", main = "log2 FC",
+     col=rgb(0,0,0,0.1), pch=19, xlim=c(-3,3), ylim=c(-3,3))
+abline(coef = c(0,1), col="red3", lty=2, lwd=2)
+
+
+plot(-log10(homer.one.ranges$FDR), -log10(homer.two.ranges$FDR),
+     xlab="", ylab="", main = "FDR",
+     col=rgb(0,0,0,0.1), pch=19, xlim=c(0,40), ylim=c(0,40))
+abline(coef = c(0,1), col="red3", lty=2, lwd=2)
+
+
+mtext(text = c("csaw","homer"), side = 3, outer = TRUE, at = c(0.3,0.8), cex = 2, font=2)
+mtext(text = c("One-factor"), side = 1, outer = TRUE, at = 0.5, cex = 2, line = 1, font=2)
+mtext(text = c("Two-factor"), side = 2, outer = TRUE, at = 0.5, line = 1, cex = 2, font=2)
 ```
 
+<img src="K36_method_comparison_files/figure-html/unnamed-chunk-4-1.png" style="display: block; margin: auto;" />
+
+## Overlaps at Genes
 
 ### All Overlapping Genes
 
 
+
 ```r
 library(UpSetR)
 
-
 # All genes
-expressionInput <- c(homer = length(unique(homer.ranges$gene_id)), 
-                     csaw =  length(unique(csaw.ranges$gene_id)), 
-                     `homer&csaw` =  length(intersect(unique(homer.ranges$gene_id),unique(csaw.ranges$gene_id)))
+listInput <- list(homer = unique(homer.one.ranges$gene_id), 
+                     csaw =  unique(csaw.one.ranges$gene_id)
                     )
 
-upset(fromExpression(expressionInput), text.scale=2)
+upset(fromList(listInput), text.scale=2, order.by = "freq")
 ```
 
 <img src="K36_method_comparison_files/figure-html/unnamed-chunk-5-1.png" style="display: block; margin: auto;" />
 
 
+
+
 ### Significant Overlapping Genes
+
+#### One-factor
 
 
 ```r
 # Significant
 
+homer.one.ranges.sign <- homer.one.ranges[homer.one.ranges$FDR < 10^-homer.cut_pv & abs(homer.one.ranges$logFC)     > homer.cut_lfc]
+csaw.one.ranges.sign <-  csaw.one.ranges[ csaw.one.ranges$FDR  < 10^-csaw.cut_pv  & abs(csaw.one.ranges$ave.logFC) > csaw.cut_lfc]
 
-homer.ranges.sign <- homer.ranges[homer.ranges$FDR < 10^-homer.cut_pv & abs(homer.ranges$logFC)     > homer.cut_lfc]
-csaw.ranges.sign <-  csaw.ranges[ csaw.ranges$FDR  < 10^-csaw.cut_pv  & abs(csaw.ranges$ave.logFC) > csaw.cut_lfc]
 
-
-expressionInput <- c(homer = length(unique(homer.ranges.sign$gene_id)), 
-                     csaw =  length(unique(csaw.ranges.sign$gene_id)), 
-                     `homer&csaw` =  length(intersect(unique(homer.ranges.sign$gene_id),unique(csaw.ranges.sign$gene_id)))
+listInput <- list(homer = unique(homer.one.ranges.sign$gene_id), 
+                     csaw =  unique(csaw.one.ranges.sign$gene_id)
                     )
 
-upset(fromExpression(expressionInput), text.scale=2)
+upset(fromList(listInput), text.scale=2, order.by = "freq")
 ```
 
 <img src="K36_method_comparison_files/figure-html/unnamed-chunk-6-1.png" style="display: block; margin: auto;" />
 
 
-## Visualization
+#### Two-factor
+
+
+```r
+# Significant
+
+homer.two.ranges.sign <- homer.two.ranges[homer.two.ranges$FDR < 10^-homer.cut_pv & abs(homer.two.ranges$logFC)     > homer.cut_lfc]
+csaw.two.ranges.sign <-  csaw.two.ranges[ csaw.two.ranges$FDR  < 10^-csaw.cut_pv  & abs(csaw.two.ranges$ave.logFC) > csaw.cut_lfc]
+
+
+listInput <- list(homer = unique(homer.two.ranges.sign$gene_id), 
+                     csaw =  unique(csaw.two.ranges.sign$gene_id)
+                    )
+
+upset(fromList(listInput), text.scale=2, order.by = "freq")
+```
+
+<img src="K36_method_comparison_files/figure-html/unnamed-chunk-7-1.png" style="display: block; margin: auto;" />
+
+
+## Example Visualization
+
+### Two-factor only
 
 
 ```r
 win.data <- readRDS("../csaw/K36.win.data.rds")
-bin.data <- readRDS("../csaw/K36.bin.data.rds")
-
-
 
 assays(win.data)$cpm <- apply(assays(win.data)$counts,2, cpm)
 
@@ -155,10 +231,10 @@ par(mfrow=c(2,1), oma=c(3,0,0,0),mar=c(0,4,4,1), mgp = c(2.5,1,0),
     cex=1, cex.axis=1, cex.lab=1.25, cex.main=1.5)
 
 
-for(my_gene in c("zld","rut","CG14229")){
+for(my_gene in c("zld","rut")){
     
         
-        my_diff_range <- csaw.ranges.sign[csaw.ranges.sign$gene_name %in% my_gene]
+        my_diff_range <- csaw.two.ranges.sign[csaw.two.ranges.sign$gene_name %in% my_gene]
         
         par(mfrow=c(2,1), oma=c(3,0,0,0),mar=c(0,4,4,1), mgp = c(2.5,1,0),
             cex=1, cex.axis=1, cex.lab=1.25, cex.main=1.5)
@@ -175,23 +251,23 @@ for(my_gene in c("zld","rut","CG14229")){
              xlab="", ylab="", main = my_gene)
         
         
-        keep_region <- overlapsAny(rowRanges(plot.win.data), csaw.ranges)
+        keep_region <- overlapsAny(rowRanges(plot.win.data), csaw.two.ranges)
         xx <- c(start(rowRanges(plot.win.data)), rev(start(rowRanges(plot.win.data))))
         yy <- c(rep(0,length(keep_region)), rev(keep_region*(1/5)))+(1)
         polygon(xx, yy, col=my_colors[9], lty = 0)
         
-        keep_region <- overlapsAny(rowRanges(plot.win.data), homer.ranges)
+        keep_region <- overlapsAny(rowRanges(plot.win.data), homer.two.ranges)
         xx <- c(start(rowRanges(plot.win.data)), rev(start(rowRanges(plot.win.data))))
         yy <- c(rep(0,length(keep_region)), rev(keep_region*(1/5)))+(0.7)
         polygon(xx, yy, col=my_colors[9], lty = 0)
         
         
-        keep_region <- overlapsAny(rowRanges(plot.win.data), csaw.ranges.sign)
+        keep_region <- overlapsAny(rowRanges(plot.win.data), csaw.two.ranges.sign)
         xx <- c(start(rowRanges(plot.win.data)), rev(start(rowRanges(plot.win.data))))
         yy <- c(rep(0,length(keep_region)), rev(keep_region*(1/5)))+(0.4)
         polygon(xx, yy, col=my_colors[1], lty = 0)
         
-        keep_region <- overlapsAny(rowRanges(plot.win.data), homer.ranges.sign)
+        keep_region <- overlapsAny(rowRanges(plot.win.data), homer.two.ranges.sign)
         xx <- c(start(rowRanges(plot.win.data)), rev(start(rowRanges(plot.win.data))))
         yy <- c(rep(0,length(keep_region)), rev(keep_region*(1/5)))+(0.1)
         polygon(xx, yy, col=my_colors[1], lty = 0)
@@ -200,7 +276,7 @@ for(my_gene in c("zld","rut","CG14229")){
         
         text(x = min(start(rowRanges(plot.win.data))), 
              y = c(0.2,0.5,0.8,1.1), adj = 1.1,
-            labels = c("homer sign","homer sign","homer all", "csaw all"))
+            labels = c("homer sign","csaw sign","homer all", "csaw all"))
         
         par(xpd=FALSE)
         
@@ -221,13 +297,14 @@ for(my_gene in c("zld","rut","CG14229")){
 }
 ```
 
-<img src="K36_method_comparison_files/figure-html/unnamed-chunk-7-1.png" style="display: block; margin: auto;" /><img src="K36_method_comparison_files/figure-html/unnamed-chunk-7-2.png" style="display: block; margin: auto;" /><img src="K36_method_comparison_files/figure-html/unnamed-chunk-7-3.png" style="display: block; margin: auto;" />
+<img src="K36_method_comparison_files/figure-html/unnamed-chunk-8-1.png" style="display: block; margin: auto;" /><img src="K36_method_comparison_files/figure-html/unnamed-chunk-8-2.png" style="display: block; margin: auto;" />
 
 
 
 
-## Data integration
+## Data integration (RNA-seq)
 
+### Two-factor only
 
 
 ```r
@@ -240,51 +317,55 @@ log2FC_counts <-  rowMeans(log2_counts[grep("E8", colnames(log2_counts))]) -
                   rowMeans(log2_counts[grep("E3", colnames(log2_counts))]) 
 
 
-par(mfcol=c(2,2),  oma=c(0,2,2,2),mar=c(2,4,1,1), mgp = c(2.5,1,0), 
+par(mfcol=c(2,2),  oma=c(2,4,2,4),mar=c(2,4,1,1), mgp = c(2.5,1,0), 
      cex=1, cex.axis=1.25, cex.lab=1.25, cex.main=1.75) 
 
 
-boxplot(log2FC_counts[ names(log2FC_counts) %in% csaw.ranges$gene_id ],           
-        log2FC_counts[ names(log2FC_counts) %in% csaw.ranges.sign[csaw.ranges.sign$direction == "up"]$gene_id ],           
+boxplot(log2FC_counts[ names(log2FC_counts) %in% csaw.two.ranges$gene_id ],           
+        log2FC_counts[ names(log2FC_counts) %in% csaw.two.ranges.sign[csaw.two.ranges.sign$direction == "up"]$gene_id ],           
         outline=FALSE, names = c("all","sign"), col = my_colors[c(9,1)],           
         ylab = "log2 fold change", xlab = "", ylim = c(-2, 8)) 
 
-boxplot(log2FC_counts[ names(log2FC_counts) %in% csaw.ranges$gene_id ],           
-        log2FC_counts[ names(log2FC_counts) %in% csaw.ranges.sign[csaw.ranges.sign$direction == "down"]$gene_id ],           
+boxplot(log2FC_counts[ names(log2FC_counts) %in% csaw.two.ranges$gene_id ],           
+        log2FC_counts[ names(log2FC_counts) %in% csaw.two.ranges.sign[csaw.two.ranges.sign$direction == "down"]$gene_id ],           
         outline=FALSE, names = c("all","sign"), col = my_colors[c(9,1)],           
         ylab = "log2 fold change", xlab = "",  ylim = c(-6, 2)) 
 
 
-boxplot(log2FC_counts[ names(log2FC_counts) %in% homer.ranges$gene_id ],           
-        log2FC_counts[ names(log2FC_counts) %in% homer.ranges.sign[homer.ranges.sign$direction == "up"]$gene_id ],           
+boxplot(log2FC_counts[ names(log2FC_counts) %in% homer.two.ranges$gene_id ],           
+        log2FC_counts[ names(log2FC_counts) %in% homer.two.ranges.sign[homer.two.ranges.sign$direction == "up"]$gene_id ],           
         outline=FALSE, names = c("all","sign"), col = my_colors[c(9,1)],           
         ylab = "log2 fold change", xlab = "", ylim = c(-2, 8)) 
 
-boxplot(log2FC_counts[ names(log2FC_counts) %in% homer.ranges$gene_id ],           
-        log2FC_counts[ names(log2FC_counts) %in% homer.ranges.sign[homer.ranges.sign$direction == "down"]$gene_id ],           
+boxplot(log2FC_counts[ names(log2FC_counts) %in% homer.two.ranges$gene_id ],           
+        log2FC_counts[ names(log2FC_counts) %in% homer.two.ranges.sign[homer.two.ranges.sign$direction == "down"]$gene_id ],           
         outline=FALSE, names = c("all","sign"), col = my_colors[c(9,1)],           
         ylab = "log2 fold change", xlab = "",  ylim = c(-6, 2)) 
 
-mtext(text = c("csaw","homer"), side = 3, outer = TRUE, at = c(0.275,0.775), cex = 2, font=2)
+mtext(text = c("csaw","homer"), side = 3, outer = TRUE, at = c(0.3,0.8), cex = 2, font=2)
+
+mtext(text = c("RNA-Seq"), side = 2, outer = TRUE, at = 0.5, cex = 2, line = 1, font=2)
+
+mtext(text = c("ChIP-seq"), side = 1, outer = TRUE, at = 0.5, line = 1, cex = 2, font=2)
 ```
 
-<img src="K36_method_comparison_files/figure-html/unnamed-chunk-8-1.png" style="display: block; margin: auto;" />
+<img src="K36_method_comparison_files/figure-html/unnamed-chunk-9-1.png" style="display: block; margin: auto;" />
 
 
 
 
 ```r
-write.table(as.data.frame(csaw.ranges)[,1:3],  
+write.table(as.data.frame(csaw.two.ranges)[,1:3],  
             "K36_csaw_ranges.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
 
-write.table(as.data.frame(csaw.ranges.sign)[,1:3],  
-            "K36_csaw.ranges.sign.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+write.table(as.data.frame(csaw.two.ranges.sign)[,1:3],  
+            "K36_csaw.two.ranges.sign.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
 
-write.table(as.data.frame(homer.ranges)[,1:3],  
+write.table(as.data.frame(homer.two.ranges)[,1:3],  
             "K36_homer_ranges.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
 
-write.table(as.data.frame(homer.ranges.sign)[,1:3],  
-            "K36_homer.ranges.sign.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+write.table(as.data.frame(homer.two.ranges.sign)[,1:3],  
+            "K36_homer.two.ranges.sign.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
 ```
 
 
