@@ -1,0 +1,293 @@
+---
+title: "Method Comparison"
+output: 
+    html_document:
+        keep_md: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache=TRUE)
+```
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+source("functions.R")
+```
+
+
+```{r, message=FALSE, warning=FALSE, fig.align="center"}
+library(GenomicAlignments)
+library(GenomicRanges)
+library(csaw)
+library(edgeR)
+
+
+homer.ranges <- readRDS("../homer/K36.results.rds")
+csaw.ranges <- readRDS("../csaw/K36.results.rds")
+
+
+library(org.Dm.eg.db)
+library(TxDb.Dmelanogaster.UCSC.dm6.ensGene)
+
+my_genes <- genes(TxDb.Dmelanogaster.UCSC.dm6.ensGene)
+my_genes$gene_name <- mapIds(org.Dm.eg.db, my_genes$gene_id, "SYMBOL", keytype="ENSEMBL", multiVals="first")
+my_protein_coding <- summarizeProteinCodingGenes(TxDb.Dmelanogaster.UCSC.dm6.ensGene)
+my_genes <- my_genes[my_protein_coding$nb_non_coding == 0]
+
+my_genes <- my_genes[seqnames(my_genes) %in% unique(seqnames(homer.ranges))]
+my_genes <- my_genes[seqnames(my_genes) %in% unique(seqnames(csaw.ranges))]
+
+
+
+par(mfrow=c(1,1), oma=c(0,0,0,0),mar=c(5,4,4,1), mgp = c(2.5,1,0),
+    cex=1, cex.axis=1, cex.lab=1.25, cex.main=1.5)
+
+
+
+plot(density(log10(width(csaw.ranges))), 
+     xlim=c(2,5), type="l", lwd=3, 
+     xlab="log10 Width [bp]", main="Peak Width Distribution")
+
+lines(density(log10(width(homer.ranges))), lwd=3, lty=2)
+lines(density(log10(width(my_genes))), lwd=3, lty=3)
+
+legend("topright", c("csaw","homer","genes"), lty=1:3, lwd=3)
+
+
+```
+
+```{r, message=FALSE, warning=FALSE, fig.align="center"}
+par(mfrow=c(1,2), oma=c(3,0,0,0),mar=c(5,4,4,1), mgp = c(2.5,1,0),
+    cex=1, cex.axis=1, cex.lab=1.25, cex.main=1.75)
+
+
+csaw.cut_lfc <- 0.8
+csaw.cut_pv <- 5
+
+plot(csaw.ranges$best.logFC, -log10(csaw.ranges$FDR),
+    xlab="log2 FC", ylab="-log10 FDR", main = "csaw",
+    col=rgb(0,0,0,0.1), pch=19, xlim=c(-3,3), ylim=c(0,40), lwd=2)
+
+abline(h=csaw.cut_pv, col="red3", lty=2, lwd=2)
+abline(v=c(-csaw.cut_lfc,csaw.cut_lfc), col="red3", lty=2, lwd=2)
+
+
+homer.cut_lfc <- 0.7  
+homer.cut_pv <- 5
+
+plot(homer.ranges$logFC, -log10(homer.ranges$FDR),
+    xlab="log2 FC", ylab="-log10 FDR", main = "homer",
+    col=rgb(0,0,0,0.1), pch=19, xlim=c(-3,3), ylim=c(0,40))
+
+abline(h=homer.cut_pv, col="red3", lty=2, lwd=2)
+abline(v=c(-homer.cut_lfc,homer.cut_lfc), col="red3", lty=2, lwd=2)
+```
+
+
+## Overlaps at Genes
+
+```{r, message=FALSE, warning=FALSE, fig.align="center", eval=FALSE}
+
+library(UpSetR)
+
+
+# All genes
+expressionInput <- c(homer = length(unique(homer.ranges$gene_id)), 
+                     csaw =  length(unique(csaw.ranges$gene_id)), 
+                     `homer&csaw` =  length(intersect(unique(homer.ranges$gene_id),unique(csaw.ranges$gene_id)))
+                    )
+
+upset(fromExpression(expressionInput), text.scale=2)
+```
+
+
+### All Overlapping Genes
+
+```{r, message=FALSE, warning=FALSE, fig.align="center"}
+
+library(UpSetR)
+
+
+# All genes
+expressionInput <- c(homer = length(unique(homer.ranges$gene_id)), 
+                     csaw =  length(unique(csaw.ranges$gene_id)), 
+                     `homer&csaw` =  length(intersect(unique(homer.ranges$gene_id),unique(csaw.ranges$gene_id)))
+                    )
+
+upset(fromExpression(expressionInput), text.scale=2)
+```
+
+
+### Significant Overlapping Genes
+
+```{r, message=FALSE, warning=FALSE, fig.align="center"}
+
+
+# Significant
+
+
+homer.ranges.sign <- homer.ranges[homer.ranges$FDR < 10^-homer.cut_pv & abs(homer.ranges$logFC)     > homer.cut_lfc]
+csaw.ranges.sign <-  csaw.ranges[ csaw.ranges$FDR  < 10^-csaw.cut_pv  & abs(csaw.ranges$ave.logFC) > csaw.cut_lfc]
+
+
+expressionInput <- c(homer = length(unique(homer.ranges.sign$gene_id)), 
+                     csaw =  length(unique(csaw.ranges.sign$gene_id)), 
+                     `homer&csaw` =  length(intersect(unique(homer.ranges.sign$gene_id),unique(csaw.ranges.sign$gene_id)))
+                    )
+
+upset(fromExpression(expressionInput), text.scale=2)
+
+
+
+
+```
+
+
+## Visualization
+
+```{r, message=FALSE, warning=FALSE, fig.align="center"} 
+
+win.data <- readRDS("../csaw/K36.win.data.rds")
+bin.data <- readRDS("../csaw/K36.bin.data.rds")
+
+
+
+assays(win.data)$cpm <- apply(assays(win.data)$counts,2, cpm)
+
+library(RColorBrewer)   
+my_colors <- brewer.pal(9,"Set1") 
+
+
+par(mfrow=c(2,1), oma=c(3,0,0,0),mar=c(0,4,4,1), mgp = c(2.5,1,0),
+    cex=1, cex.axis=1, cex.lab=1.25, cex.main=1.5)
+
+
+for(my_gene in c("zld","rut","CG14229")){
+    
+        
+        my_diff_range <- csaw.ranges.sign[csaw.ranges.sign$gene_name %in% my_gene]
+        
+        par(mfrow=c(2,1), oma=c(3,0,0,0),mar=c(0,4,4,1), mgp = c(2.5,1,0),
+            cex=1, cex.axis=1, cex.lab=1.25, cex.main=1.5)
+        
+        
+        my_window <- 5*10^4
+        
+        plot.win.data <- subsetByOverlaps(win.data, my_diff_range, maxgap = my_window)
+        
+        assays(plot.win.data)$scaled <- apply(assays(plot.win.data)$cpm,2, function(x){scale(x)})
+        
+        plot(start(rowRanges(plot.win.data)), assays(plot.win.data)$scaled[,2], 
+             type="n", col=my_colors[5], lwd=2, ylim=c(0,1.2), bty="n", xaxt="n",yaxt="n",
+             xlab="", ylab="", main = my_gene)
+        
+        
+        keep_region <- overlapsAny(rowRanges(plot.win.data), csaw.ranges)
+        xx <- c(start(rowRanges(plot.win.data)), rev(start(rowRanges(plot.win.data))))
+        yy <- c(rep(0,length(keep_region)), rev(keep_region*(1/5)))+(1)
+        polygon(xx, yy, col=my_colors[9], lty = 0)
+        
+        keep_region <- overlapsAny(rowRanges(plot.win.data), homer.ranges)
+        xx <- c(start(rowRanges(plot.win.data)), rev(start(rowRanges(plot.win.data))))
+        yy <- c(rep(0,length(keep_region)), rev(keep_region*(1/5)))+(0.7)
+        polygon(xx, yy, col=my_colors[9], lty = 0)
+        
+        
+        keep_region <- overlapsAny(rowRanges(plot.win.data), csaw.ranges.sign)
+        xx <- c(start(rowRanges(plot.win.data)), rev(start(rowRanges(plot.win.data))))
+        yy <- c(rep(0,length(keep_region)), rev(keep_region*(1/5)))+(0.4)
+        polygon(xx, yy, col=my_colors[1], lty = 0)
+        
+        keep_region <- overlapsAny(rowRanges(plot.win.data), homer.ranges.sign)
+        xx <- c(start(rowRanges(plot.win.data)), rev(start(rowRanges(plot.win.data))))
+        yy <- c(rep(0,length(keep_region)), rev(keep_region*(1/5)))+(0.1)
+        polygon(xx, yy, col=my_colors[1], lty = 0)
+        
+        par(xpd=TRUE)
+        
+        text(x = min(start(rowRanges(plot.win.data))), 
+             y = c(0.2,0.5,0.8,1.1), adj = 1.1,
+            labels = c("homer sign","homer sign","homer all", "csaw all"))
+        
+        par(xpd=FALSE)
+        
+        
+        par(mar=c(5,4,0,1))
+        
+        
+        plot(start(rowRanges(plot.win.data)), assays(plot.win.data)$scaled[,2],
+             type="l", col=my_colors[5], lwd=2, 
+             xlab="Coordinates", ylab="Scaled CPM")
+        
+        xx <- c(start(rowRanges(plot.win.data)), rev(start(rowRanges(plot.win.data))))
+        yy <- c(rep(0,length(plot.win.data)), rev(assays(plot.win.data)$scaled[,2]))
+        polygon(xx, yy, col=my_colors[5], lty = 0)
+        
+        lines(start(rowRanges(plot.win.data)), assays(plot.win.data)$scaled[,6],type="l", col=my_colors[7], lwd=2)
+
+}
+
+```
+
+
+
+
+## Data integration
+
+
+```{r, message=FALSE, warning=FALSE, fig.align="center"} 
+
+my_counts <- read.csv("../RNAseq_counts/my_counts_GENEnorm.csv",row.names=1) 
+
+log2_counts <- log2(my_counts+1) 
+
+
+log2FC_counts <-  rowMeans(log2_counts[grep("E8", colnames(log2_counts))]) -
+                  rowMeans(log2_counts[grep("E3", colnames(log2_counts))]) 
+
+
+par(mfcol=c(2,2),  oma=c(0,2,2,2),mar=c(2,4,1,1), mgp = c(2.5,1,0), 
+     cex=1, cex.axis=1.25, cex.lab=1.25, cex.main=1.75) 
+
+
+boxplot(log2FC_counts[ names(log2FC_counts) %in% csaw.ranges$gene_id ],           
+        log2FC_counts[ names(log2FC_counts) %in% csaw.ranges.sign[csaw.ranges.sign$direction == "up"]$gene_id ],           
+        outline=FALSE, names = c("all","sign"), col = my_colors[c(9,1)],           
+        ylab = "log2 fold change", xlab = "", ylim = c(-2, 8)) 
+
+boxplot(log2FC_counts[ names(log2FC_counts) %in% csaw.ranges$gene_id ],           
+        log2FC_counts[ names(log2FC_counts) %in% csaw.ranges.sign[csaw.ranges.sign$direction == "down"]$gene_id ],           
+        outline=FALSE, names = c("all","sign"), col = my_colors[c(9,1)],           
+        ylab = "log2 fold change", xlab = "",  ylim = c(-6, 2)) 
+
+
+boxplot(log2FC_counts[ names(log2FC_counts) %in% homer.ranges$gene_id ],           
+        log2FC_counts[ names(log2FC_counts) %in% homer.ranges.sign[homer.ranges.sign$direction == "up"]$gene_id ],           
+        outline=FALSE, names = c("all","sign"), col = my_colors[c(9,1)],           
+        ylab = "log2 fold change", xlab = "", ylim = c(-2, 8)) 
+
+boxplot(log2FC_counts[ names(log2FC_counts) %in% homer.ranges$gene_id ],           
+        log2FC_counts[ names(log2FC_counts) %in% homer.ranges.sign[homer.ranges.sign$direction == "down"]$gene_id ],           
+        outline=FALSE, names = c("all","sign"), col = my_colors[c(9,1)],           
+        ylab = "log2 fold change", xlab = "",  ylim = c(-6, 2)) 
+
+mtext(text = c("csaw","homer"), side = 3, outer = TRUE, at = c(0.275,0.775), cex = 2, font=2)
+
+```  
+
+
+
+``` {r, message=FALSE, warning=FALSE}  
+write.table(as.data.frame(csaw.ranges)[,1:3],  
+            "K36_csaw_ranges.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+
+write.table(as.data.frame(csaw.ranges.sign)[,1:3],  
+            "K36_csaw.ranges.sign.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+
+write.table(as.data.frame(homer.ranges)[,1:3],  
+            "K36_homer_ranges.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+
+write.table(as.data.frame(homer.ranges.sign)[,1:3],  
+            "K36_homer.ranges.sign.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+```    
+
+
