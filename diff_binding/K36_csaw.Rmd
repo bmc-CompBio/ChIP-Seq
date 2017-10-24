@@ -142,6 +142,8 @@ legend(-0.33,-0.75, legend =  c("ChIP","Input"),
 ## Trended Bias
 
 ```{r, message=FALSE, warning=FALSE, fig.align="center"}
+my_design <- "onefactor"
+
 par(mfrow=c(1,2), oma=c(3,0,0,0),mar=c(5,4,4,1), mgp = c(2.5,1,0),
     cex=1, cex.axis=1, cex.lab=1.25, cex.main=1.5)
 
@@ -242,10 +244,139 @@ out.ranges$gene_id <- my_genes[my_nearest]$gene_id
 
 out.ranges$gene_name <- mapIds(org.Dm.eg.db, out.ranges$gene_id, "SYMBOL", keytype="ENSEMBL", multiVals="first")
 
-saveRDS(out.ranges, paste(my_ChIP,"results.rds", sep="."))
+saveRDS(out.ranges, paste(my_ChIP, my_design ,"results.rds", sep="."))
 
 out.ranges
 ```
+
+
+
+## Two-factor design
+
+
+## Trended Bias
+
+
+```{r, message=FALSE, warning=FALSE, fig.align="center"}
+my_design <- "twofactor"
+
+win.filt.data <- win.data[keep,]
+
+par(mfcol=c(2,2), oma=c(0,4,0,0),mar=c(4,4,1,1), mgp = c(2.5,1,0),
+    cex=1, cex.axis=1, cex.lab=1.25, cex.main=1.5)
+
+win.ab <- aveLogCPM(asDGEList(win.filt.data))
+adjc <- log2(assay(win.filt.data)+0.5)
+logfc <- adjc[,2] - adjc[,6]
+smoothScatter(win.ab, logfc, ylim=c(-4, 4), xlim=c(1, 5),
+              xlab="Average abundance", ylab="Log-fold change")
+
+logfc <- adjc[,1] - adjc[,5]
+smoothScatter(win.ab, logfc, ylim=c(-4, 4), xlim=c(1, 5),
+              xlab="Average abundance", ylab="Log-fold change")
+
+
+offsets <- normOffsets(win.filt.data, type="loess")
+norm.adjc <- adjc - offsets/log(2)
+norm.fc <- norm.adjc[,2]-norm.adjc[,6]
+smoothScatter(win.ab, norm.fc, ylim=c(-4, 4), xlim=c(1, 5),
+              xlab="Average abundance", ylab="Log-fold change")
+
+norm.fc <- norm.adjc[,1]-norm.adjc[,5]
+smoothScatter(win.ab, norm.fc, ylim=c(-4, 4), xlim=c(1, 5),
+              xlab="Average abundance", ylab="Log-fold change")
+
+mtext(text = c("Input","ChIP"), side = 2, outer = TRUE, at =c(0.3,0.8), line = 1, cex = 2, font=2)
+```
+
+## Estimate Variability
+
+```{r, message=FALSE, warning=FALSE, fig.align="center"}
+stage <- factor(gsub("[A-B]_.*","", my_samples))
+my_assays <- factor(gsub(".*[A-B]_","", my_samples))
+
+design <- model.matrix(~my_assays+stage+my_assays:stage)
+design
+
+
+y <- asDGEList(win.filt.data)
+y <- scaleOffset(y, offsets)
+y <- estimateDisp(y, design)
+summary(y$trended.dispersion)
+
+fit <- glmQLFit(y, design, robust=TRUE)
+
+par(mfrow=c(1,2), oma=c(3,0,0,0),mar=c(5,4,4,1), mgp = c(2.5,1,0),
+    cex=1, cex.axis=1, cex.lab=1.25, cex.main=1.5)
+
+plotBCV(y)
+
+plotQLDisp(fit)
+
+summary(fit$df.prior)
+```
+
+
+
+## Differential Test
+
+
+```{r, message=FALSE, warning=FALSE}
+# test for interaction term
+res <- glmQLFTest(fit, coef = 4)
+
+merged <- mergeWindows(rowRanges(win.filt.data), tol=100, max.width=5000)
+tabcom <- combineTests(merged$id, res$table)
+
+head(tabcom)
+
+is.sig <- tabcom$FDR <= 0.05
+summary(is.sig)
+
+table(tabcom$direction[is.sig])
+
+
+tabbest <- getBestTest(merged$id, res$table)
+head(tabbest)
+```
+
+
+
+
+## Region Annotation
+
+```{r, message=FALSE, warning=FALSE}
+out.ranges <- merged$region
+
+elementMetadata(out.ranges) <- data.frame(tabcom,
+    best.pos=mid(ranges(rowRanges(win.filt.data[tabbest$best]))),
+    best.logFC=tabbest$logFC,
+    ave.logFC=sapply(1:nrow(tabcom), function(i){mean(res$table$logFC[merged$id == i]) })
+    )
+
+
+library(org.Dm.eg.db)
+library(TxDb.Dmelanogaster.UCSC.dm6.ensGene)
+
+my_genes <- genes(TxDb.Dmelanogaster.UCSC.dm6.ensGene)
+my_genes <- my_genes[seqnames(my_genes) %in% unique(seqnames(out.ranges))]
+
+out.ranges <- out.ranges[seqnames(out.ranges) %in% unique(seqnames(my_genes))]
+
+mid.ranges <- makeGRangesFromDataFrame(data.frame(chr=seqnames(out.ranges),
+                                                   start=mid(ranges(out.ranges)),
+                                                   end=mid(ranges(out.ranges))))
+
+my_nearest <- nearest(mid.ranges,my_genes)
+out.ranges$gene_id <- my_genes[my_nearest]$gene_id
+
+out.ranges$gene_name <- mapIds(org.Dm.eg.db, out.ranges$gene_id, "SYMBOL", keytype="ENSEMBL", multiVals="first")
+
+saveRDS(out.ranges, paste(my_ChIP, my_design ,"results.rds", sep="."))
+
+out.ranges
+```
+
 
 
 

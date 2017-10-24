@@ -133,6 +133,8 @@ my_peak_counts
 
 ```{r, message=FALSE, warning=FALSE, fig.align="center"}
 
+my_design <- "onefactor"
+
 mcols(my_peak_counts) <- mcols(my_peak_counts)[!(grepl("INP", colnames(mcols(my_peak_counts) )))]
 
 
@@ -220,9 +222,129 @@ out.ranges$gene_id <- my_genes[my_nearest]$gene_id
 
 out.ranges$gene_name <- mapIds(org.Dm.eg.db, out.ranges$gene_id, "SYMBOL", keytype="ENSEMBL", multiVals="first")
 
-saveRDS(out.ranges, paste(my_ChIP,"results.rds", sep="."))
+saveRDS(out.ranges, paste(my_ChIP, my_design,"results.rds", sep="."))
 
 out.ranges
 ```
+
+
+
+
+
+## Two-factor design
+
+
+
+## Trended Bias
+
+```{r, message=FALSE, warning=FALSE, fig.align="center"}
+
+my_design <- "twofactor"
+
+my_peak_counts <- readRDS(paste(my_ChIP,"counts.rds", sep="."))
+
+
+par(mfcol=c(2,2), oma=c(0,4,0,0),mar=c(4,4,1,1), mgp = c(2.5,1,0),
+    cex=1, cex.axis=1, cex.lab=1.25, cex.main=1.5)
+
+win.ab <- aveLogCPM(DGEList(as.matrix(mcols(my_peak_counts))))
+adjc <- log2(as.matrix(mcols(my_peak_counts))+0.5)
+logfc <- adjc[,2] - adjc[,6]
+smoothScatter(win.ab, logfc, ylim=c(-3, 3), xlim=c(2, 12),
+              xlab="Average abundance", ylab="Log-fold change")
+
+logfc <- adjc[,1] - adjc[,5]
+smoothScatter(win.ab, logfc, ylim=c(-3, 3), xlim=c(2, 12),
+              xlab="Average abundance", ylab="Log-fold change")
+
+
+offsets <- normOffsets(as.matrix(mcols(my_peak_counts)), type="loess")
+norm.adjc <- adjc - offsets/log(2)
+norm.fc <- norm.adjc[,2]-norm.adjc[,6]
+smoothScatter(win.ab, norm.fc, ylim=c(-3, 3), xlim=c(2, 12),
+              xlab="Average abundance", ylab="Log-fold change")
+
+norm.fc <- norm.adjc[,1]-norm.adjc[,5]
+smoothScatter(win.ab, norm.fc, ylim=c(-3, 3), xlim=c(2, 12),
+              xlab="Average abundance", ylab="Log-fold change")
+
+mtext(text = c("Input","ChIP"), side = 2, outer = TRUE, at =c(0.3,0.8), line = 1, cex = 2, font=2)
+
+```
+
+
+
+## Estimate Variability
+
+```{r, message=FALSE, warning=FALSE, fig.align="center"}
+stage <- factor(gsub("[A-B]_.*","", my_samples))
+my_assays <- factor(gsub(".*[A-B]_","", my_samples))
+
+design <- model.matrix(~my_assays+stage+my_assays:stage)
+design
+
+y <- DGEList(as.matrix(mcols(my_peak_counts)))
+y <- scaleOffset(y, offsets)
+y <- estimateDisp(y, design)
+summary(y$trended.dispersion)
+
+fit <- glmQLFit(y, design, robust=TRUE)
+
+par(mfrow=c(1,2), oma=c(3,0,0,0),mar=c(5,4,4,1), mgp = c(2.5,1,0),
+    cex=1, cex.axis=1, cex.lab=1.25, cex.main=1.5)
+
+plotBCV(y)
+
+plotQLDisp(fit)
+
+summary(fit$df.prior)
+```
+
+
+
+## Differential Test
+
+```{r, message=FALSE, warning=FALSE}
+# test for interaction term
+res <- glmQLFTest(fit, coef = 4)
+
+toptags <- topTags(res, n = nrow(res$table), sort.by = "none" )
+
+toptags[1:5,]
+```
+
+
+## Region Annotation
+
+```{r, message=FALSE, warning=FALSE}
+out.ranges <- granges(my_peak_counts, use.mcols=FALSE)
+
+mcols(out.ranges) <- cbind(mcols(out.ranges), toptags$table)
+
+out.ranges$direction <- ifelse(out.ranges$logFC > 0, "up", "down")
+
+library(org.Dm.eg.db)
+library(TxDb.Dmelanogaster.UCSC.dm6.ensGene)
+
+my_genes <- genes(TxDb.Dmelanogaster.UCSC.dm6.ensGene)
+my_genes <- my_genes[seqnames(my_genes) %in% unique(seqnames(out.ranges))]
+
+out.ranges <- out.ranges[seqnames(out.ranges) %in% unique(seqnames(my_genes))]
+
+mid.ranges <- makeGRangesFromDataFrame(data.frame(chr=seqnames(out.ranges),
+                                                   start=mid(ranges(out.ranges)),
+                                                   end=mid(ranges(out.ranges))))
+
+my_nearest <- nearest(mid.ranges,my_genes)
+out.ranges$gene_id <- my_genes[my_nearest]$gene_id
+
+out.ranges$gene_name <- mapIds(org.Dm.eg.db, out.ranges$gene_id, "SYMBOL", keytype="ENSEMBL", multiVals="first")
+
+saveRDS(out.ranges, paste(my_ChIP, my_design,"results.rds", sep="."))
+
+out.ranges
+```
+
+
 
 

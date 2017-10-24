@@ -250,6 +250,8 @@ legend(-0.33,-0.75, legend =  c("ChIP","Input"),
 
 
 ```r
+my_design <- "onefactor"
+
 par(mfrow=c(1,2), oma=c(3,0,0,0),mar=c(5,4,4,1), mgp = c(2.5,1,0),
     cex=1, cex.axis=1, cex.lab=1.25, cex.main=1.5)
 
@@ -433,7 +435,7 @@ out.ranges$gene_id <- my_genes[my_nearest]$gene_id
 
 out.ranges$gene_name <- mapIds(org.Dm.eg.db, out.ranges$gene_id, "SYMBOL", keytype="ENSEMBL", multiVals="first")
 
-saveRDS(out.ranges, paste(my_ChIP,"results.rds", sep="."))
+saveRDS(out.ranges, paste(my_ChIP, my_design ,"results.rds", sep="."))
 
 out.ranges
 ```
@@ -482,6 +484,259 @@ out.ranges
 ##   -------
 ##   seqinfo: 8 sequences from an unspecified genome
 ```
+
+
+
+## Two-factor design
+
+
+## Trended Bias
+
+
+
+```r
+my_design <- "twofactor"
+
+win.filt.data <- win.data[keep,]
+
+par(mfcol=c(2,2), oma=c(0,4,0,0),mar=c(4,4,1,1), mgp = c(2.5,1,0),
+    cex=1, cex.axis=1, cex.lab=1.25, cex.main=1.5)
+
+win.ab <- aveLogCPM(asDGEList(win.filt.data))
+adjc <- log2(assay(win.filt.data)+0.5)
+logfc <- adjc[,2] - adjc[,6]
+smoothScatter(win.ab, logfc, ylim=c(-4, 4), xlim=c(1, 5),
+              xlab="Average abundance", ylab="Log-fold change")
+
+logfc <- adjc[,1] - adjc[,5]
+smoothScatter(win.ab, logfc, ylim=c(-4, 4), xlim=c(1, 5),
+              xlab="Average abundance", ylab="Log-fold change")
+
+
+offsets <- normOffsets(win.filt.data, type="loess")
+norm.adjc <- adjc - offsets/log(2)
+norm.fc <- norm.adjc[,2]-norm.adjc[,6]
+smoothScatter(win.ab, norm.fc, ylim=c(-4, 4), xlim=c(1, 5),
+              xlab="Average abundance", ylab="Log-fold change")
+
+norm.fc <- norm.adjc[,1]-norm.adjc[,5]
+smoothScatter(win.ab, norm.fc, ylim=c(-4, 4), xlim=c(1, 5),
+              xlab="Average abundance", ylab="Log-fold change")
+
+mtext(text = c("Input","ChIP"), side = 2, outer = TRUE, at =c(0.3,0.8), line = 1, cex = 2, font=2)
+```
+
+<img src="K36_csaw_files/figure-html/unnamed-chunk-9-1.png" style="display: block; margin: auto;" />
+
+## Estimate Variability
+
+
+```r
+stage <- factor(gsub("[A-B]_.*","", my_samples))
+my_assays <- factor(gsub(".*[A-B]_","", my_samples))
+
+design <- model.matrix(~my_assays+stage+my_assays:stage)
+design
+```
+
+```
+##   (Intercept) my_assaysK36 stageE11 my_assaysK36:stageE11
+## 1           1            0        0                     0
+## 2           1            1        0                     0
+## 3           1            0        0                     0
+## 4           1            1        0                     0
+## 5           1            0        1                     0
+## 6           1            1        1                     1
+## 7           1            0        1                     0
+## 8           1            1        1                     1
+## attr(,"assign")
+## [1] 0 1 2 3
+## attr(,"contrasts")
+## attr(,"contrasts")$my_assays
+## [1] "contr.treatment"
+## 
+## attr(,"contrasts")$stage
+## [1] "contr.treatment"
+```
+
+```r
+y <- asDGEList(win.filt.data)
+y <- scaleOffset(y, offsets)
+y <- estimateDisp(y, design)
+summary(y$trended.dispersion)
+```
+
+```
+##      Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
+## 0.0008268 0.0011135 0.0014194 0.0016749 0.0021709 0.0044593
+```
+
+```r
+fit <- glmQLFit(y, design, robust=TRUE)
+
+par(mfrow=c(1,2), oma=c(3,0,0,0),mar=c(5,4,4,1), mgp = c(2.5,1,0),
+    cex=1, cex.axis=1, cex.lab=1.25, cex.main=1.5)
+
+plotBCV(y)
+
+plotQLDisp(fit)
+```
+
+<img src="K36_csaw_files/figure-html/unnamed-chunk-10-1.png" style="display: block; margin: auto;" />
+
+```r
+summary(fit$df.prior)
+```
+
+```
+##     Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+##   0.5327 201.1196 201.1196 200.7020 201.1196 201.1196
+```
+
+
+
+## Differential Test
+
+
+
+```r
+# test for interaction term
+res <- glmQLFTest(fit, coef = 4)
+
+merged <- mergeWindows(rowRanges(win.filt.data), tol=100, max.width=5000)
+tabcom <- combineTests(merged$id, res$table)
+
+head(tabcom)
+```
+
+```
+##   nWindows logFC.up logFC.down       PValue          FDR direction
+## 1        2        0          0 3.924002e-01 0.5021481265        up
+## 2       88        0          3 1.898867e-01 0.2834194849      down
+## 3       87        0         15 6.556544e-03 0.0190819131      down
+## 4       91        0          9 3.978709e-05 0.0002858450      down
+## 5       15        0         10 5.203509e-05 0.0003568897      down
+## 6       77        4          0 1.084583e-01 0.1818785060        up
+```
+
+```r
+is.sig <- tabcom$FDR <= 0.05
+summary(is.sig)
+```
+
+```
+##    Mode   FALSE    TRUE 
+## logical    4825    3714
+```
+
+```r
+table(tabcom$direction[is.sig])
+```
+
+```
+## 
+##  down mixed    up 
+##  1538    31  2145
+```
+
+```r
+tabbest <- getBestTest(merged$id, res$table)
+head(tabbest)
+```
+
+```
+##   best      logFC   logCPM         F       PValue          FDR
+## 1    2  0.3195659 1.995555  1.681364 3.924002e-01 0.5557647271
+## 2   86 -0.5804463 3.235484  9.068794 2.575636e-01 0.3915498412
+## 3  166 -0.8271143 2.689878 16.326418 6.556544e-03 0.0200811812
+## 4  267 -1.3157478 2.063219 27.248291 3.978709e-05 0.0002929911
+## 5  272 -1.1132150 2.278903 22.524606 5.829915e-05 0.0004021135
+## 6  323  0.5902410 3.376006  9.755421 1.575742e-01 0.2647631013
+```
+
+
+
+
+## Region Annotation
+
+
+```r
+out.ranges <- merged$region
+
+elementMetadata(out.ranges) <- data.frame(tabcom,
+    best.pos=mid(ranges(rowRanges(win.filt.data[tabbest$best]))),
+    best.logFC=tabbest$logFC,
+    ave.logFC=sapply(1:nrow(tabcom), function(i){mean(res$table$logFC[merged$id == i]) })
+    )
+
+
+library(org.Dm.eg.db)
+library(TxDb.Dmelanogaster.UCSC.dm6.ensGene)
+
+my_genes <- genes(TxDb.Dmelanogaster.UCSC.dm6.ensGene)
+my_genes <- my_genes[seqnames(my_genes) %in% unique(seqnames(out.ranges))]
+
+out.ranges <- out.ranges[seqnames(out.ranges) %in% unique(seqnames(my_genes))]
+
+mid.ranges <- makeGRangesFromDataFrame(data.frame(chr=seqnames(out.ranges),
+                                                   start=mid(ranges(out.ranges)),
+                                                   end=mid(ranges(out.ranges))))
+
+my_nearest <- nearest(mid.ranges,my_genes)
+out.ranges$gene_id <- my_genes[my_nearest]$gene_id
+
+out.ranges$gene_name <- mapIds(org.Dm.eg.db, out.ranges$gene_id, "SYMBOL", keytype="ENSEMBL", multiVals="first")
+
+saveRDS(out.ranges, paste(my_ChIP, my_design ,"results.rds", sep="."))
+
+out.ranges
+```
+
+```
+## GRanges object with 8539 ranges and 11 metadata columns:
+##          seqnames             ranges strand |  nWindows  logFC.up
+##             <Rle>          <IRanges>  <Rle> | <integer> <integer>
+##      [1]    chr2L     [ 6301,  6600]      * |         2         0
+##      [2]    chr2L     [ 7351, 11950]      * |        88         0
+##      [3]    chr2L     [11751, 16300]      * |        87         0
+##      [4]    chr2L     [67801, 72550]      * |        91         0
+##      [5]    chr2L     [83051, 84000]      * |        15         0
+##      ...      ...                ...    ... .       ...       ...
+##   [8535]     chrY [3576051, 3576950]      * |        11         0
+##   [8536]     chrY [3577701, 3579300]      * |        22         1
+##   [8537]     chrY [3579801, 3580350]      * |         7         0
+##   [8538]     chrY [3606351, 3607050]      * |        10         6
+##   [8539]     chrY [3625201, 3625450]      * |         1         0
+##          logFC.down       PValue          FDR   direction  best.pos
+##           <integer>    <numeric>    <numeric> <character> <integer>
+##      [1]          0 3.924002e-01 0.5021481265          up      6475
+##      [2]          3 1.898867e-01 0.2834194849        down     11625
+##      [3]         15 6.556544e-03 0.0190819131        down     15625
+##      [4]          9 3.978709e-05 0.0002858450        down     72375
+##      [5]         10 5.203509e-05 0.0003568897        down     83325
+##      ...        ...          ...          ...         ...       ...
+##   [8535]         11   0.30683599   0.41352155        down   3576575
+##   [8536]         12   0.63834903   0.73392519       mixed   3578275
+##   [8537]          7   0.01215901   0.03141476        down   3579975
+##   [8538]          0   0.02790133   0.06134126          up   3606725
+##   [8539]          0   0.88801588   0.94266132        down   3625325
+##           best.logFC    ave.logFC     gene_id   gene_name
+##            <numeric>    <numeric> <character> <character>
+##      [1]   0.3195659  0.225997284 FBgn0031208     CG11023
+##      [2]  -0.5804463 -0.150671193 FBgn0031208     CG11023
+##      [3]  -0.8271143 -0.305234228 FBgn0002121      l(2)gl
+##      [4]  -1.3157478 -0.009959328 FBgn0067779         dbr
+##      [5]  -1.1132150 -0.698402088 FBgn0002931         net
+##      ...         ...          ...         ...         ...
+##   [8535] -1.12068591  -0.87328230 FBgn0046323         ORY
+##   [8536] -0.98884914  -0.40387267 FBgn0046323         ORY
+##   [8537] -2.12443341  -1.63683438 FBgn0046323         ORY
+##   [8538]  0.61020056   0.45778902 FBgn0046323         ORY
+##   [8539] -0.09201243  -0.09201243 FBgn0046323         ORY
+##   -------
+##   seqinfo: 8 sequences from an unspecified genome
+```
+
 
 
 
